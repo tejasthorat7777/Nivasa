@@ -1,63 +1,90 @@
 import * as React from "react";
-import { View, Text, ActivityIndicator, Image, StyleSheet } from "react-native-paper";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { COLORS } from "../../theme";
 import { useAuthStore } from "../../store/auth.store";
 
 export const SplashScreen = () => {
   const navigation = useNavigation();
-  const { checkSession, isLoading } = useAuthStore.getState();
+  const checkSession = useAuthStore((state) => state.checkSession);
+  const isLoading = useAuthStore((state) => state.isLoading);
 
   React.useEffect(() => {
-    // Check for existing authentication session
-    checkSession().then(() => {
-      // If authenticated, navigate to appropriate dashboard
+    let timer: ReturnType<typeof setTimeout>;
+    let cancelled = false;
+
+    void checkSession().then(() => {
+      if (cancelled) return;
       const { role, isAuthenticated } = useAuthStore.getState();
-      if (isAuthenticated && role) {
-        setTimeout(() => {
-          navigation.navigate(`(${role.toLowerCase()})`);
-        }, 500);
-      } else {
-        // No session, go to welcome/onboarding
-        setTimeout(() => {
-          navigation.navigate("Welcome");
-        }, 500);
-      }
+      timer = setTimeout(() => {
+        navigation.navigate(isAuthenticated && role ? "Dashboard" : "Welcome");
+      }, 300);
     });
-  }, [navigation, checkSession]);
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [checkSession, navigation]);
 
   return (
-    <View style={styles.container}>
-      <Image
-        source={require("../../assets/nivasa-logo.png")}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+    >
+      <View style={styles.logo}>
+        <Text style={styles.logoText}>N</Text>
+      </View>
       <Text style={styles.tagline}>Manage. Stay. Thrive.</Text>
-      <ActivityIndicator size="large" animating={isLoading} />
-    </View>
+      <ActivityIndicator
+        size="large"
+        color={COLORS.primary}
+        animating={isLoading}
+        style={styles.indicator}
+      />
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  content: {
+    flexGrow: 1,
+    minHeight: 420,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
-    padding: 20,
+    padding: 24,
   },
   logo: {
-    width: 100,
-    height: 100,
+    width: 96,
+    height: 96,
     marginBottom: 16,
-    // Navy background with orange windows - per branding spec
-    backgroundColor: "#1E40AF",
-    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    borderRadius: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logoText: {
+    color: COLORS.surface,
+    fontSize: 56,
+    fontWeight: "800",
   },
   tagline: {
     fontSize: 16,
-    color: "#1F2937",
+    color: COLORS.text,
     marginTop: 16,
-    fontFamily: "Poppins-SemiBold",
+    fontWeight: "600",
+  },
+  indicator: {
+    marginTop: 24,
   },
 });

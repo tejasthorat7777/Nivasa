@@ -1,6 +1,24 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 import { User } from "../types/user.types";
+import { API_BASE_URL } from "../config/api";
+
+const authStorage = {
+  getItem: (name: string) =>
+    Platform.OS === "web"
+      ? Promise.resolve(globalThis.localStorage.getItem(name))
+      : SecureStore.getItemAsync(name),
+  setItem: (name: string, value: string) =>
+    Platform.OS === "web"
+      ? Promise.resolve(globalThis.localStorage.setItem(name, value))
+      : SecureStore.setItemAsync(name, value),
+  removeItem: (name: string) =>
+    Platform.OS === "web"
+      ? Promise.resolve(globalThis.localStorage.removeItem(name))
+      : SecureStore.deleteItemAsync(name),
+};
 
 interface AuthState {
   user: User | null;
@@ -10,12 +28,12 @@ interface AuthState {
   role: string | null;
   pgId: string | null;
 
-  login: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
   registerLandlord: (data: any) => Promise<void>;
   registerManager: (data: any) => Promise<void>;
   registerStudent: (data: any) => Promise<void>;
   logout: () => void;
-  checkSession: () => void;
+  checkSession: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -28,13 +46,13 @@ export const useAuthStore = create<AuthState>()(
       role: null,
       pgId: null,
 
-      login: async (email: string, password: string) => {
+      login: async (identifier: string, password: string) => {
         set({ isLoading: true });
         try {
-          const response = await fetch("http://localhost:4000/api/auth/login", {
+          const response = await fetch(`${API_BASE_URL}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ email: identifier, password }),
           });
 
           const data = await response.json();
@@ -63,7 +81,7 @@ export const useAuthStore = create<AuthState>()(
       registerLandlord: async (data: any) => {
         set({ isLoading: true });
         try {
-          const response = await fetch("http://localhost:4000/api/auth/register/landlord", {
+          const response = await fetch(`${API_BASE_URL}/auth/register/landlord`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
@@ -95,7 +113,7 @@ export const useAuthStore = create<AuthState>()(
       registerManager: async (data: any) => {
         set({ isLoading: true });
         try {
-          const response = await fetch("http://localhost:4000/api/auth/register/manager", {
+          const response = await fetch(`${API_BASE_URL}/auth/register/manager`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
@@ -127,7 +145,7 @@ export const useAuthStore = create<AuthState>()(
       registerStudent: async (data: any) => {
         set({ isLoading: true });
         try {
-          const response = await fetch("http://localhost:4000/api/auth/register/student", {
+          const response = await fetch(`${API_BASE_URL}/auth/register/student`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
@@ -166,20 +184,16 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      checkSession: () => {
-        const token =
-          typeof localStorage === "undefined"
-            ? null
-            : localStorage.getItem("nivasa_token");
-        if (token) {
-          set({ isAuthenticated: true, token });
-        } else {
-          set({ isAuthenticated: false });
-        }
+      checkSession: async () => {
+        await useAuthStore.persist.rehydrate();
+        const token = useAuthStore.getState().token;
+        set({ isAuthenticated: Boolean(token), isLoading: false });
       },
     }),
     {
       name: "nivasa-auth",
+      storage: createJSONStorage(() => authStorage),
+      skipHydration: true,
     }
   )
 );

@@ -1,16 +1,26 @@
 import * as React from "react";
-import { View, Text, Input, Button } from "react-native-paper";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { Button } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
+import { CustomInput as Input } from "../../components/common/Input";
 import { useAuthStore } from "../../store/auth.store";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { COLORS } from "../../theme";
 
 const landlordRegisterSchema = z.object({
   fullName: z.string().min(2).max(50),
   email: z.string().email(),
   phone: z.string().min(10).max(15),
-  password: z.string().min(6),
+  password: z.string().min(8),
   confirmPassword: z.string(),
   pgName: z.string().min(2).max(100),
   pgAddress: z.string().min(2).max(200),
@@ -22,7 +32,7 @@ const managerRegisterSchema = z.object({
   fullName: z.string().min(2).max(50),
   email: z.string().email(),
   phone: z.string().min(10).max(15),
-  password: z.string().min(6),
+  password: z.string().min(8),
   confirmPassword: z.string(),
   pgInvitationCode: z.string().regex(/^[A-Z2-9]{6}$/),
 });
@@ -31,67 +41,99 @@ const studentRegisterSchema = z.object({
   fullName: z.string().min(2).max(50),
   email: z.string().email(),
   phone: z.string().min(10).max(15),
-  password: z.string().min(6),
-  confirmPassword: z.string(),
+  password: z.string().min(8),
   pgInvitationCode: z.string().regex(/^[A-Z2-9]{6}$/),
   collegeName: z.string().min(2).max(100),
 });
 
 export const RegisterScreen = ({ route }: any) => {
-  const { registerLandlord, registerManager, registerStudent } = useAuthStore.getState();
+  const { registerLandlord, registerManager, registerStudent } =
+    useAuthStore.getState();
   const navigation = useNavigation();
-  const { role } = useAuthStore.getState();
+  const { role: accountRole } = useAuthStore.getState();
+  const role = accountRole ?? "STUDENT";
 
   // Determine which registration flow based on role or route
-  const [formSchema, onRegister] = role === "LANDLORD"
-    ? [landlordRegisterSchema, registerLandlord]
-    : role === "MANAGER"
-      ? [managerRegisterSchema, registerManager]
-      : [studentRegisterSchema, registerStudent];
+  const formSchema =
+    role === "LANDLORD"
+      ? landlordRegisterSchema
+      : role === "MANAGER"
+        ? managerRegisterSchema
+        : studentRegisterSchema;
 
   const {
-    register: formRegister,
     control,
     handleSubmit,
-    formState: { errors, isSubmiting },
-    reset,
-  } = useForm<formSchema extends z.ZodObject<any, any, any> ? z.infer<formSchema> : any>({
+    formState: { errors, isSubmitting },
+  } = useForm<
+    formSchema extends z.ZodObject<any, any, any> ? z.infer<formSchema> : any
+  >({
     resolver: zodResolver(formSchema),
   });
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
 
   const onSubmit = async (data: any) => {
+    setSubmitError(null);
+    const registrationData = { ...data, name: data.fullName };
+    delete registrationData.fullName;
+
     try {
       if (role === "LANDLORD") {
-        await registerLandlord({
-          ...data,
-        });
+        await registerLandlord(registrationData);
         navigation.navigate("Dashboard");
       } else if (role === "MANAGER") {
-        await registerManager({
-          ...data,
-        });
+        await registerManager(registrationData);
         navigation.navigate("Dashboard");
       } else {
-        await registerStudent({
-          ...data,
-        });
+        await registerStudent(registrationData);
         // Student will be pending approval, navigate to welcome
         navigation.navigate("Welcome");
       }
-    } catch (error: any) {
-      // Show error
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : "Registration failed."
+      );
     }
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        testID="registration-scroll-view"
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="none"
+      >
+      <Button
+        mode="text"
+        contentStyle={styles.backButtonContent}
+        onPress={() => navigation.goBack()}
+      >
+        <Text style={styles.backText}>‹  Back</Text>
+      </Button>
+      <View style={styles.brandMark}>
+        <Text style={styles.brandMarkText}>N</Text>
+      </View>
+      <Text style={styles.eyebrow}>ACCOUNT SETUP</Text>
       <Text style={styles.title}>
-        {role === "LANDLORD" ? "Landlord Registration" : role === "MANAGER" ? "Manager Registration" : "Student Registration"}
+        {role === "LANDLORD"
+          ? "Landlord Registration"
+          : role === "MANAGER"
+            ? "Manager Registration"
+            : "Student Registration"}
       </Text>
       <Text style={styles.subtitle}>
-        {role === "LANDLORD" ? "Create your PG account" : role === "MANAGER" ? "Join as manager" : "Join PG as student"}
+        {role === "LANDLORD"
+          ? "Create your PG account"
+          : role === "MANAGER"
+            ? "Join as manager"
+            : "Join PG as student"}
       </Text>
 
+      <View style={styles.formCard}>
       <View style={styles.inputGroup}>
         <Input
           label="Full Name"
@@ -141,7 +183,7 @@ export const RegisterScreen = ({ route }: any) => {
         />
       </View>
 
-      {role !== "STUDENT" && (
+      {(role === "LANDLORD" || role === "MANAGER") && (
         <View style={styles.inputGroup}>
           <Input
             label="Confirm Password"
@@ -149,7 +191,7 @@ export const RegisterScreen = ({ route }: any) => {
             type="password"
             control={control}
             name="confirmPassword"
-            rules={[{ required: true, value: data => data.password === data.confirmPassword }]}
+            rules={{ required: true }}
             error={!!errors.confirmPassword}
             helperText={errors.confirmPassword?.message}
           />
@@ -203,9 +245,10 @@ export const RegisterScreen = ({ route }: any) => {
           <Input
             label="Total Rooms"
             placeholder="Enter total rooms"
+            type="number"
             control={control}
             name="totalRooms"
-            rules={[{ required: true, value: data => data.totalRooms > 0 }]}
+            rules={{ required: true }}
             error={!!errors.totalRooms}
             helperText={errors.totalRooms?.message}
           />
@@ -240,43 +283,95 @@ export const RegisterScreen = ({ route }: any) => {
         </View>
       )}
 
+      {submitError && (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {submitError}
+        </Text>
+      )}
+
       <Button
         mode="contained"
-        disabled={isSubmiting}
-        onPress={handleSubmit(onSubmit)}
+        disabled={isSubmitting}
+        onPress={() => void handleSubmit(onSubmit)()}
       >
-        {isSubmiting ? "Registering..." : "Register"}
+        {isSubmitting ? "Registering..." : "Register"}
       </Button>
 
       <Text style={styles.loginLink}>
         Already have an account?{" "}
-
-        <Text style={styles.loginLinkText} onPress={() => navigation.navigate("Login")}>
+        <Text
+          style={styles.loginLinkText}
+          onPress={() => navigation.navigate("Login")}
+        >
           Login
         </Text>
       </Text>
-    </View>
+      </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
-const styles = {
+const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
     padding: 24,
-    backgroundColor: "#F8FAFC",
+    paddingTop: 16,
+    paddingBottom: 32,
+  },
+  backButtonContent: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 0,
+  },
+  backText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  brandMark: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.primary,
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  brandMarkText: {
+    color: COLORS.surface,
+    fontSize: 26,
+    fontWeight: "800",
+  },
+  eyebrow: {
+    color: COLORS.secondary,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    marginBottom: 8,
   },
   title: {
     fontSize: 22,
-    fontWeight: "600",
-    color: "#1F2937",
-    textAlign: "center",
+    fontWeight: "700",
+    color: COLORS.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: "#6B7280",
-    textAlign: "center",
-    marginBottom: 24,
+    lineHeight: 21,
+    color: COLORS.muted,
+    marginBottom: 20,
+  },
+  formCard: {
+    padding: 18,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
   inputGroup: {
     marginBottom: 16,
@@ -291,4 +386,8 @@ const styles = {
     fontWeight: "500",
     marginLeft: 4,
   },
-};
+  error: {
+    color: "#B91C1C",
+    marginBottom: 12,
+  },
+});

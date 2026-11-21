@@ -1,176 +1,184 @@
 import * as React from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Button } from "react-native-paper";
-import { useNavigation } from "@react-navigation/native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { AppHeader } from "../../components/common/AppHeader";
+import { RoomInventory } from "../../components/common/RoomInventory";
 import { useAuthStore } from "../../store/auth.store";
-import { useState, useEffect } from "react";
-import api from "../../services/api";
-import { endpoints } from "../../services/api";
+import api, { endpoints } from "../../services/api";
+import { COLORS } from "../../theme";
+
+interface ManagerStats {
+  openComplaints: number;
+  pendingMaintenance: number;
+  equipmentFailures: number;
+  completedTasks: number;
+}
 
 export const ManagerDashboard = () => {
-  const { user, pgId, role } = useAuthStore.getState();
-  const [tabs, setTabs] = useState<"home" | "complaints" | "equipment" | "tasks" | "profile">("home");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const [stats, setStats] = useState<{
-    openComplaints: number;
-    pendingMaintenance: number;
-    equipmentFailures: number;
-    completedTasks: number;
-  }>({
+  const { user, pgId } = useAuthStore.getState();
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [stats, setStats] = React.useState<ManagerStats>({
     openComplaints: 0,
     pendingMaintenance: 0,
     equipmentFailures: 0,
     completedTasks: 0,
   });
 
-  useEffect(() => {
+  React.useEffect(() => {
+    let active = true;
+
     const loadDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
-
-        // Fetch manager dashboard data from backend API
         const response = await api.get(endpoints.dashboard.manager);
-
-        if (response.data) {
-          setStats({
-            openComplaints: response.data.openComplaints,
-            pendingMaintenance: response.data.pendingMaintenance,
-            equipmentFailures: response.data.equipmentFailures,
-            completedTasks: response.data.completedTasks,
-          });
+        if (active && response.data?.dashboard) {
+          setStats(response.data.dashboard);
         }
-      } catch (err: any) {
-        console.error("Failed to load manager dashboard:", err);
-        setError(err.message || "Failed to load dashboard data");
+      } catch (requestError: unknown) {
+        if (!active) return;
+        console.error("Failed to load manager dashboard:", requestError);
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Failed to load dashboard data"
+        );
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
-    loadDashboardData();
+    void loadDashboardData();
+    return () => {
+      active = false;
+    };
   }, [pgId]);
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" />
-        <Text>Loading dashboard data...</Text>
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.error}>Error: {error}</Text>
-        <Button mode="contained" onPress={() => {} }>Retry</Button>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.welcome}>Welcome, {user?.name}</Text>
-          <Text style={styles.pgName}>PG: {user?.pgId ? "StayNest Student Living" : ""}</Text>
+      <ScrollView
+        testID="manager-dashboard-scroll-view"
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        <AppHeader name={user?.name} role="Manager" />
+        <View style={styles.intro}>
+          <Text style={styles.eyebrow}>MANAGER WORKSPACE</Text>
+          <Text style={styles.title}>Rooms & Beds</Text>
+          <Text style={styles.subtitle}>
+            Keep your PG inventory and daily operations in view.
+          </Text>
         </View>
 
-        <View style={statsGrid}>
-          <View style={statCard}>
-            <Text style={statValue}>{stats.openComplaints}</Text>
-            <Text style={statLabel}>Open Complaints</Text>
-          </View>
-          <View style={statCard}>
-            <Text style={statValue}>{stats.pendingMaintenance}</Text>
-            <Text style={statLabel}>Pending Maintenance</Text>
-          </View>
-          <View style={statCard}>
-            <Text style={statValue}>{stats.equipmentFailures}</Text>
-            <Text style={statLabel}>Equipment Issues</Text>
-          </View>
-          <View style={statCard}>
-            <Text style={statValue}>{stats.completedTasks}</Text>
-            <Text style={statLabel}>Completed Tasks</Text>
-          </View>
+        <View style={styles.statsGrid}>
+          <SummaryCard label="Open complaints" value={stats.openComplaints} accent="orange" />
+          <SummaryCard label="Pending maintenance" value={stats.pendingMaintenance} />
+          <SummaryCard label="Equipment issues" value={stats.equipmentFailures} accent="orange" />
+          <SummaryCard label="Tasks completed" value={stats.completedTasks} />
         </View>
 
-        <View style={styles.actionButtons} marginTop={24}>
-          <Button mode="contained" onPress={() => setTabs("complaints")}>
-            <Text>{"Complaints"}</Text>
-          </Button>
-          <Button mode="contained" onPress={() => setTabs("equipment")}>
-            <Text>{"Equipment"}</Text>
-          </Button>
-          <Button mode="contained" onPress={() => setTabs("tasks")}>
-            <Text>{"Tasks"}</Text>
-          </Button>
-        </View>
+        {loading && (
+          <View style={styles.statusRow}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <Text style={styles.subtitle}>Updating operations...</Text>
+          </View>
+        )}
+        {error && <Text style={styles.error}>{error}</Text>}
+
+        <RoomInventory />
       </ScrollView>
     </View>
   );
 };
 
+const SummaryCard = ({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent?: "orange";
+}) => (
+  <View style={styles.summaryCard}>
+    <Text style={styles.summaryLabel}>{label.toUpperCase()}</Text>
+    <Text style={[styles.summaryValue, accent === "orange" && styles.accentValue]}>
+      {value}
+    </Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: COLORS.background,
   },
-  scrollContent: {
+  content: {
     padding: 16,
+    paddingBottom: 32,
+    gap: 18,
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+  intro: {
+    gap: 5,
   },
-  welcome: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#1F2937",
+  eyebrow: {
+    color: COLORS.secondary,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.1,
   },
-  pgName: {
-    color: "#6B7280",
-    fontSize: 14,
+  title: {
+    color: COLORS.primary,
+    fontSize: 26,
+    fontWeight: "700",
+  },
+  subtitle: {
+    color: COLORS.muted,
+    fontSize: 12,
+    lineHeight: 18,
   },
   statsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 16,
-    marginBottom: 24,
+    gap: 10,
   },
-  statCard: {
-    backgroundColor: "#FFFFFF",
-    padding: 20,
-    borderRadius: 12,
+  summaryCard: {
     width: "48%",
-    alignItems: "center",
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: "#1E40AF",
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: "#6B7280",
-    textTransform: "uppercase",
-  },
-  actionButtons: {
-    flexDirection: "row",
+    minHeight: 92,
+    padding: 14,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
     justifyContent: "space-between",
   },
+  summaryLabel: {
+    color: COLORS.muted,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+  },
+  summaryValue: {
+    color: COLORS.primary,
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  accentValue: {
+    color: COLORS.secondary,
+  },
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   error: {
-    color: "#DC3545",
-    margin: 16,
-    fontSize: 16,
+    color: COLORS.danger,
+    fontSize: 13,
   },
 });

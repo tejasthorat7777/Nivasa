@@ -6,6 +6,7 @@ import { LandlordDashboard } from "./screens/landlord/landlord-dashboard";
 import { ManagerDashboard } from "./screens/manager/manager-dashboard";
 import { StudentDashboard } from "./screens/student/student-dashboard";
 import { useAuthStore } from "./store/auth.store";
+import { COLORS } from "./theme";
 
 const Stack = createNativeStackNavigator();
 
@@ -23,7 +24,13 @@ const DashboardScreen = () => {
 
 export default function AppNavigator() {
   return (
-    <Stack.Navigator initialRouteName="Welcome">
+    <Stack.Navigator
+      initialRouteName="Welcome"
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: COLORS.background },
+      }}
+    >
       <Stack.Screen name="Welcome" component={WelcomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />

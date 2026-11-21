@@ -254,14 +254,15 @@ export const loginUser = async (req: Request, res: Response) => {
       });
     }
 
-    const { email, password } = result.data;
+    const { email: identifier, password } = result.data;
 
-    // Find user
-    const user = await User.findOne({ email }).select("+passwordHash");
+    const user = await User.findOne({
+      $or: [{ email: identifier.toLowerCase() }, { phone: identifier }],
+    }).select("+passwordHash");
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Invalid email/mobile number or password",
       });
     }
 
@@ -270,7 +271,7 @@ export const loginUser = async (req: Request, res: Response) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Invalid email/mobile number or password",
       });
     }
 

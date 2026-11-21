@@ -40,7 +40,7 @@ export const signupSchema = z
   });
 
 export const loginSchema = z.object({
-  email: emailSchema,
+  email: z.string().trim().min(1, "Email or mobile number is required"),
   password: z.string().min(1),
 });
 

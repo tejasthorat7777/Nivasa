@@ -1,8 +1,9 @@
 import axios, { AxiosInstance, AxiosResponse } from "axios";
+import { useAuthStore } from "../store/auth.store";
+import { API_BASE_URL } from "../config/api";
 
 const api: AxiosInstance = axios.create({
-  baseURL: "http://10.0.2.2:4000/api", // Expo Android emulator
-  // baseURL: "http://localhost:4000/api", // Expo on physical device with LAN
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
@@ -12,7 +13,7 @@ const api: AxiosInstance = axios.create({
 // Add auth token to requests
 api.interceptors.request.use(
   async (config: any) => {
-    const token = localStorage.getItem("nivasa_token");
+    const token = useAuthStore.getState().token;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -25,8 +26,7 @@ api.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid - clear auth
-      localStorage.removeItem("nivasa_token");
+      useAuthStore.getState().logout();
     }
     return Promise.reject(error);
   }

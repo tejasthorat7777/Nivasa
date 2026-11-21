@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react-native";
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "@jest/globals";
 import { LandlordDashboard } from "../screens/landlord/landlord-dashboard";
 
 describe("Landlord Dashboard Tests", () => {
-  it("renders without crashing", () => {
-    render(<LandlordDashboard />);
-    expect(screen.getByText("Welcome")).toBeTruthy();
+  it("renders without crashing", async () => {
+    await render(<LandlordDashboard />);
+    expect(screen.getByText("COLLECTED")).toBeTruthy();
   });
 
   it("shows loading state", () => {
