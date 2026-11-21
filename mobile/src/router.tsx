@@ -25,7 +25,7 @@ const DashboardScreen = () => {
 export default function AppNavigator() {
   return (
     <Stack.Navigator
-      initialRouteName="Welcome"
+      initialRouteName="Login"
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: COLORS.background },

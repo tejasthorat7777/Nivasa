@@ -7,13 +7,15 @@ import {
   Text,
   View,
 } from "react-native";
+import { Button } from "react-native-paper";
 import { AppHeader } from "../../components/common/AppHeader";
+import { FeatureEmptyState } from "../../components/common/FeatureEmptyState";
 import { RoomInventory } from "../../components/common/RoomInventory";
 import { useAuthStore } from "../../store/auth.store";
 import api, { endpoints } from "../../services/api";
 import { COLORS } from "../../theme";
 
-type LandlordTab = "home" | "rooms" | "finance";
+type LandlordTab = "home" | "rooms" | "approvals" | "finance";
 
 interface LandlordDashboardData {
   pg?: { name?: string; city?: string };
@@ -229,12 +231,54 @@ export const LandlordDashboard = () => {
 
         {tab === "rooms" && <RoomInventory />}
 
+        {tab === "approvals" && (
+          <View testID="landlord-approvals-content" style={styles.tabContent}>
+            <View style={styles.pageHeading}>
+              <Text style={styles.eyebrow}>RESIDENT CHECKLIST</Text>
+              <Text style={styles.pageTitle}>Approval review</Text>
+              <Text style={styles.mutedText}>
+                Review resident documents and onboarding status.
+              </Text>
+            </View>
+            <View style={styles.applicantCard}>
+              <Text style={styles.cardTitle}>Applicant details</Text>
+              <Text style={styles.mutedText}>
+                Applicant identity, room, and rent details will appear here when
+                the KYC service is connected.
+              </Text>
+              <Text style={styles.previewBadge}>KYC DATA NOT CONNECTED</Text>
+            </View>
+            <View style={styles.approvalMatrix}>
+              <Text style={styles.sectionTitle}>Trust & verification matrix</Text>
+              <View style={styles.approvalGrid}>
+                <VerificationCard title="Identity auth" />
+                <VerificationCard title="Campus ID" />
+                <VerificationCard title="Guardian" />
+                <VerificationCard title="Deposit" />
+              </View>
+            </View>
+            <FeatureEmptyState
+              icon="✓"
+              title="KYC review is not connected"
+              message="These controls are a UI preview. No approval or document action is currently available."
+            />
+            <Button mode="contained" disabled>
+              Approve resident & issue key card
+            </Button>
+            <Button mode="outlined" disabled>
+              Decline / request documents
+            </Button>
+          </View>
+        )}
+
         {tab === "finance" && (
           <>
             <View style={styles.pageHeading}>
-              <Text style={styles.eyebrow}>LIVE RENT DESK</Text>
-              <Text style={styles.pageTitle}>Payments Ledger</Text>
-              <Text style={styles.mutedText}>Recent payments for your property.</Text>
+              <Text style={styles.eyebrow}>RENT VERIFICATION</Text>
+              <Text style={styles.pageTitle}>Verify rent claims</Text>
+              <Text style={styles.mutedText}>
+                Review the payment records currently available for your property.
+              </Text>
             </View>
             <View style={styles.metricsGrid}>
               <MetricCard label="Collected" value={formatCurrency(collected)} footnote="Rent received" />
@@ -248,18 +292,21 @@ export const LandlordDashboard = () => {
                 <PaymentRow key={payment._id ?? index} payment={payment} />
               ))
             ) : (
-              <View style={styles.card}>
-                <Text style={styles.mutedText}>No payments have been recorded yet.</Text>
-              </View>
+              <FeatureEmptyState
+                icon="₹"
+                title="No rent claims available"
+                message="Payment claims will appear here when they are recorded by the rent service."
+              />
             )}
           </>
         )}
       </ScrollView>
 
       <View style={styles.bottomNav}>
-        <NavItem label="Home" icon="⌂" active={tab === "home"} onPress={() => setTab("home")} />
-        <NavItem label="Rooms" icon="▣" active={tab === "rooms"} onPress={() => setTab("rooms")} />
-        <NavItem label="Payments" icon="₹" active={tab === "finance"} onPress={() => setTab("finance")} />
+        <NavItem testID="landlord-tab-home" label="Overview" icon="⌂" active={tab === "home"} onPress={() => setTab("home")} />
+        <NavItem testID="landlord-tab-rooms" label="Rooms" icon="▣" active={tab === "rooms"} onPress={() => setTab("rooms")} />
+        <NavItem testID="landlord-tab-approvals" label="Approvals" icon="✓" active={tab === "approvals"} onPress={() => setTab("approvals")} />
+        <NavItem testID="landlord-tab-ledger" label="Ledger" icon="₹" active={tab === "finance"} onPress={() => setTab("finance")} />
       </View>
     </View>
   );
@@ -283,6 +330,13 @@ const MetricCard = ({
     <Text style={styles.metricLabel}>{label.toUpperCase()}</Text>
     <Text style={[styles.metricValue, alert && styles.alertValue]}>{value}</Text>
     <Text style={styles.mutedSmall}>{footnote}</Text>
+  </View>
+);
+
+const VerificationCard = ({ title }: { title: string }) => (
+  <View style={styles.verificationCard}>
+    <Text style={styles.cardTitle}>{title}</Text>
+    <Text style={styles.mutedSmall}>Not connected</Text>
   </View>
 );
 
@@ -346,17 +400,19 @@ const PaymentRow = ({ payment }: { payment: any }) => (
 );
 
 const NavItem = ({
+  testID,
   label,
   icon,
   active,
   onPress,
 }: {
+  testID: string;
   label: string;
   icon: string;
   active: boolean;
   onPress: () => void;
 }) => (
-  <Pressable accessibilityRole="button" style={styles.navItem} onPress={onPress}>
+  <Pressable accessibilityRole="button" testID={testID} style={styles.navItem} onPress={onPress}>
     <Text style={[styles.navIcon, active && styles.navActive]}>{icon}</Text>
     <Text style={[styles.navLabel, active && styles.navActive]}>{label}</Text>
   </Pressable>
@@ -423,7 +479,7 @@ const styles = StyleSheet.create({
     color: COLORS.success,
     fontSize: 9,
     fontWeight: "800",
-    backgroundColor: "#DCFCE7",
+    backgroundColor: COLORS.successSoft,
     paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 12,
@@ -609,6 +665,46 @@ const styles = StyleSheet.create({
   },
   pageHeading: {
     gap: 5,
+  },
+  tabContent: {
+    gap: 16,
+  },
+  applicantCard: {
+    gap: 10,
+    padding: 18,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  previewBadge: {
+    alignSelf: "flex-start",
+    overflow: "hidden",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: COLORS.secondarySoft,
+    color: COLORS.secondary,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  approvalMatrix: {
+    gap: 10,
+  },
+  approvalGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  verificationCard: {
+    width: "48%",
+    minHeight: 76,
+    justifyContent: "space-between",
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
     paddingVertical: 8,
   },
   eyebrow: {
@@ -625,7 +721,7 @@ const styles = StyleSheet.create({
   errorCard: {
     padding: 12,
     borderRadius: 10,
-    backgroundColor: "#FFEEEE",
+    backgroundColor: COLORS.dangerSoft,
     flexDirection: "row",
     justifyContent: "space-between",
   },

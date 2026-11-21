@@ -3,10 +3,9 @@ import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
-  Text,
-  View,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { BrandLogo } from "../../components/common/BrandLogo";
 import { COLORS } from "../../theme";
 import { useAuthStore } from "../../store/auth.store";
 
@@ -38,10 +37,7 @@ export const SplashScreen = () => {
       style={styles.container}
       contentContainerStyle={styles.content}
     >
-      <View style={styles.logo}>
-        <Text style={styles.logoText}>N</Text>
-      </View>
-      <Text style={styles.tagline}>Manage. Stay. Thrive.</Text>
+      <BrandLogo width={216} height={72} />
       <ActivityIndicator
         size="large"
         color={COLORS.primary}
@@ -63,26 +59,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
-  },
-  logo: {
-    width: 96,
-    height: 96,
-    marginBottom: 16,
-    backgroundColor: COLORS.primary,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoText: {
-    color: COLORS.surface,
-    fontSize: 56,
-    fontWeight: "800",
-  },
-  tagline: {
-    fontSize: 16,
-    color: COLORS.text,
-    marginTop: 16,
-    fontWeight: "600",
   },
   indicator: {
     marginTop: 24,

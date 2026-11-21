@@ -9,11 +9,13 @@ import {
 } from "react-native";
 import { Button } from "react-native-paper";
 import { AppHeader } from "../../components/common/AppHeader";
+import { FeatureEmptyState } from "../../components/common/FeatureEmptyState";
 import { useAuthStore } from "../../store/auth.store";
 import api, { endpoints } from "../../services/api";
 import { COLORS } from "../../theme";
 
-type StudentTab = "home" | "bills" | "complaints" | "notices";
+type StudentTab = "home" | "bills" | "complaints" | "meals" | "notices";
+type MealPassView = "menu" | "pass";
 
 interface StudentDashboardData {
   currentBill: any;
@@ -26,6 +28,7 @@ interface StudentDashboardData {
 export const StudentDashboard = () => {
   const { user, pgId } = useAuthStore.getState();
   const [tab, setTab] = React.useState<StudentTab>("home");
+  const [mealPassView, setMealPassView] = React.useState<MealPassView>("menu");
   const [retry, setRetry] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -228,16 +231,16 @@ export const StudentDashboard = () => {
                 onPress={() => setTab("complaints")}
               />
               <ActionCard
+                icon="☷"
+                label="Meals & Pass"
+                detail="Dining and gate pass"
+                onPress={() => setTab("meals")}
+              />
+              <ActionCard
                 icon="▤"
                 label="Notices"
                 detail="PG announcements"
                 onPress={() => setTab("notices")}
-              />
-              <ActionCard
-                icon="⌂"
-                label="Room details"
-                detail={dashboard.roomInfo ? "View assigned room" : "Assignment pending"}
-                onPress={() => setTab("home")}
               />
             </View>
 
@@ -264,8 +267,19 @@ export const StudentDashboard = () => {
         )}
 
         {tab === "bills" && (
-          <View testID="student-bills-content" style={styles.card}>
-            <Text style={styles.sectionTitle}>Bills & payments</Text>
+          <View testID="student-bills-content" style={styles.tabContent}>
+            <View style={styles.pageHeading}>
+              <Text style={styles.eyebrow}>MONTHLY RENT</Text>
+              <Text style={styles.sectionTitle}>Rent payment</Text>
+              <Text style={styles.mutedText}>
+                {dashboard.currentBill?.billingMonth || "Your current bill"}
+                {dashboard.roomInfo?.roomNumber
+                  ? ` • Room ${dashboard.roomInfo.roomNumber}`
+                  : ""}
+              </Text>
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Current bill details</Text>
             {dashboard.currentBill ? (
               <>
                 <BillRow label="Billing period" value={dashboard.currentBill.billingMonth} />
@@ -283,15 +297,136 @@ export const StudentDashboard = () => {
             ) : (
               <Text style={styles.mutedText}>No current bill is available.</Text>
             )}
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Payment methods</Text>
+              <View style={styles.paymentOptions}>
+                <Text style={styles.paymentOption}>Instant UPI</Text>
+                <Text style={styles.paymentOption}>Net banking</Text>
+                <Text style={styles.paymentOption}>Cash desk</Text>
+              </View>
+              <View style={styles.readOnlyField}>
+                <Text style={styles.mutedSmall}>Transaction reference / UTR</Text>
+                <Text style={styles.mutedText}>
+                  Payment submission is not enabled yet.
+                </Text>
+              </View>
+              <Button mode="contained" disabled>
+                Submit for verification
+              </Button>
+            </View>
           </View>
         )}
 
         {tab === "complaints" && (
-          <View testID="student-complaints-content" style={styles.card}>
-            <Text style={styles.sectionTitle}>Complaints & help</Text>
-            <Text style={styles.mutedText}>
-              To report an issue, please contact your PG manager.
-            </Text>
+          <View testID="student-complaints-content" style={styles.tabContent}>
+            <View style={styles.pageHeading}>
+              <Text style={styles.eyebrow}>QUICK REDRESSAL PORTAL</Text>
+              <Text style={styles.sectionTitle}>Raise maintenance request</Text>
+              <Text style={styles.mutedText}>
+                Report a room or facility issue to your PG manager.
+              </Text>
+            </View>
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Select issue category</Text>
+              <View style={styles.categoryGrid}>
+                {["Plumbing", "Wi-Fi", "Electric / AC", "Cleaning", "Furniture"].map(
+                  (category) => (
+                    <Text key={category} style={styles.categoryChip}>
+                      {category}
+                    </Text>
+                  )
+                )}
+              </View>
+              <View style={styles.readOnlyField}>
+                <Text style={styles.mutedSmall}>Issue title and description</Text>
+                <Text style={styles.mutedText}>
+                  Complaint entry will be available when the request service is connected.
+                </Text>
+              </View>
+              <View style={styles.urgencyRow}>
+                <Text style={styles.mutedSmall}>Urgency</Text>
+                <Text style={styles.urgencyChip}>Low</Text>
+                <Text style={styles.urgencyChip}>Medium</Text>
+                <Text style={styles.urgencyChip}>Urgent</Text>
+              </View>
+              <Button mode="contained" disabled>
+                Submit complaint ticket
+              </Button>
+            </View>
+            <FeatureEmptyState
+              icon="!"
+              title="Request submission unavailable"
+              message="For urgent help, contact your PG manager directly."
+            />
+          </View>
+        )}
+
+        {tab === "meals" && (
+          <View testID="student-meals-content" style={styles.tabContent}>
+            <Text style={styles.sectionTitle}>Meals & Pass</Text>
+            <View style={styles.mealPassSelector}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: mealPassView === "menu" }}
+                testID="student-meals-menu-tab"
+                style={[
+                  styles.mealPassOption,
+                  mealPassView === "menu" && styles.mealPassOptionActive,
+                ]}
+                onPress={() => setMealPassView("menu")}
+              >
+                <Text
+                  style={[
+                    styles.mealPassOptionText,
+                    mealPassView === "menu" && styles.mealPassOptionTextActive,
+                  ]}
+                >
+                  Today's Mess Menu
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: mealPassView === "pass" }}
+                testID="student-gate-pass-tab"
+                style={[
+                  styles.mealPassOption,
+                  mealPassView === "pass" && styles.mealPassOptionActive,
+                ]}
+                onPress={() => setMealPassView("pass")}
+              >
+                <Text
+                  style={[
+                    styles.mealPassOptionText,
+                    mealPassView === "pass" && styles.mealPassOptionTextActive,
+                  ]}
+                >
+                  Request Gate Pass
+                </Text>
+              </Pressable>
+            </View>
+            {mealPassView === "menu" ? (
+              <View style={styles.featureSection}>
+                <Text style={styles.cardTitle}>Today's dining schedule</Text>
+                <FeatureEmptyState
+                  icon="☷"
+                  title="No menu posted"
+                  message="Your PG manager has not published a dining schedule."
+                />
+              </View>
+            ) : (
+              <View style={styles.featureSection}>
+                <Text style={styles.cardTitle}>Outing & gate pass</Text>
+              <FeatureEmptyState
+                icon="✓"
+                title="Gate pass requests unavailable"
+                message="Gate pass requests are not supported in this app yet."
+              />
+                <Button mode="contained" disabled>
+                  Apply for gate pass
+                </Button>
+              </View>
+            )}
           </View>
         )}
 
@@ -319,6 +454,7 @@ export const StudentDashboard = () => {
         <NavItem testID="student-tab-home" label="Home" icon="⌂" active={tab === "home"} onPress={() => setTab("home")} />
         <NavItem testID="student-tab-bills" label="Bills" icon="₹" active={tab === "bills"} onPress={() => setTab("bills")} />
         <NavItem testID="student-tab-complaints" label="Complaints" icon="!" active={tab === "complaints"} onPress={() => setTab("complaints")} />
+        <NavItem testID="student-tab-meals" label="Meals" icon="☷" active={tab === "meals"} onPress={() => setTab("meals")} />
         <NavItem testID="student-tab-notices" label="Notices" icon="▤" active={tab === "notices"} onPress={() => setTab("notices")} />
       </View>
     </View>
@@ -446,6 +582,102 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 12,
   },
+  tabContent: {
+    gap: 12,
+  },
+  featureSection: {
+    gap: 10,
+  },
+  pageHeading: {
+    gap: 5,
+  },
+  eyebrow: {
+    color: COLORS.secondary,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+  },
+  paymentOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  paymentOption: {
+    overflow: "hidden",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: COLORS.surfaceLow,
+    color: COLORS.muted,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  readOnlyField: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surfaceLow,
+    gap: 5,
+  },
+  categoryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  categoryChip: {
+    overflow: "hidden",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: COLORS.surfaceLow,
+    color: COLORS.muted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  urgencyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  urgencyChip: {
+    overflow: "hidden",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: COLORS.secondarySoft,
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  mealPassSelector: {
+    flexDirection: "row",
+    padding: 4,
+    borderRadius: 14,
+    backgroundColor: COLORS.surfaceLow,
+    gap: 4,
+  },
+  mealPassOption: {
+    flex: 1,
+    minHeight: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 6,
+    borderRadius: 10,
+  },
+  mealPassOptionActive: {
+    backgroundColor: COLORS.surface,
+  },
+  mealPassOptionText: {
+    color: COLORS.muted,
+    fontSize: 11,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  mealPassOptionTextActive: {
+    color: COLORS.primary,
+  },
   rowBetween: {
     flexDirection: "row",
     alignItems: "center",
@@ -475,7 +707,7 @@ const styles = StyleSheet.create({
   },
   statusActive: {
     overflow: "hidden",
-    backgroundColor: "#DCFCE7",
+    backgroundColor: COLORS.successSoft,
     color: COLORS.success,
     borderRadius: 16,
     paddingHorizontal: 9,
@@ -516,7 +748,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   billEyebrow: {
-    color: "#C7D2FE",
+    color: COLORS.onPrimarySoft,
     fontSize: 10,
     fontWeight: "700",
     letterSpacing: 1,
@@ -527,7 +759,7 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
   billSubtext: {
-    color: "#DCE1FF",
+    color: COLORS.onPrimarySoft,
     fontSize: 12,
     lineHeight: 18,
   },

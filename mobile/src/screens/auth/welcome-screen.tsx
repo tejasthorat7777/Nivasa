@@ -2,6 +2,7 @@ import * as React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
+import { BrandLogo } from "../../components/common/BrandLogo";
 import { COLORS } from "../../theme";
 import { useAuthStore } from "../../store/auth.store";
 
@@ -20,10 +21,8 @@ export const WelcomeScreen = () => {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <View style={styles.logo}>
-        <Text style={styles.logoText}>N</Text>
-      </View>
-      <Text style={styles.eyebrow}>NIVASA • STAYNEST</Text>
+      <BrandLogo width={216} height={72} style={styles.logo} />
+      <Text style={styles.eyebrow}>WELCOME TO YOUR PG</Text>
       <Text style={styles.title}>A better way to manage your stay.</Text>
       <Text style={styles.subtitle}>
         Rent, room details and PG updates, all in one calm and simple space.
@@ -71,18 +70,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   logo: {
-    width: 64,
-    height: 64,
-    borderRadius: 16,
     marginBottom: 24,
-    backgroundColor: COLORS.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logoText: {
-    color: COLORS.surface,
-    fontSize: 36,
-    fontWeight: "800",
   },
   eyebrow: {
     color: COLORS.secondary,

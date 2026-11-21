@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { Button } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
+import { BrandLogo } from "../../components/common/BrandLogo";
 import { CustomInput as Input } from "../../components/common/Input";
 import { useAuthStore } from "../../store/auth.store";
 import { useForm } from "react-hook-form";
@@ -114,9 +115,7 @@ export const RegisterScreen = ({ route }: any) => {
       >
         <Text style={styles.backText}>‹  Back</Text>
       </Button>
-      <View style={styles.brandMark}>
-        <Text style={styles.brandMarkText}>N</Text>
-      </View>
+      <BrandLogo width={164} height={55} style={styles.brandMark} />
       <Text style={styles.eyebrow}>ACCOUNT SETUP</Text>
       <Text style={styles.title}>
         {role === "LANDLORD"
@@ -333,19 +332,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   brandMark: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.primary,
     marginTop: 20,
     marginBottom: 20,
-  },
-  brandMarkText: {
-    color: COLORS.surface,
-    fontSize: 26,
-    fontWeight: "800",
   },
   eyebrow: {
     color: COLORS.secondary,
@@ -382,12 +370,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   loginLinkText: {
-    color: "#1E40AF",
+    color: COLORS.primary,
     fontWeight: "500",
     marginLeft: 4,
   },
   error: {
-    color: "#B91C1C",
+    color: COLORS.danger,
     marginBottom: 12,
   },
 });

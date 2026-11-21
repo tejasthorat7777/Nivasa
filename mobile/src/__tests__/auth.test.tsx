@@ -13,10 +13,21 @@ describe("Mobile Authentication Tests", () => {
   describe("Login Screen", () => {
     it("renders login form", async () => {
       await render(<LoginScreen />);
-      expect(screen.getByText("Sign in to your account")).toBeTruthy();
+      expect(screen.getByText("Welcome Back")).toBeTruthy();
       expect(screen.getByTestId("login-scroll-view")).toBeTruthy();
-      expect(screen.getByPlaceholderText("Enter email or mobile number")).toBeTruthy();
-      expect(screen.getByPlaceholderText("Enter your password")).toBeTruthy();
+      expect(screen.getByTestId("login-role-student")).toBeTruthy();
+      expect(screen.getByTestId("login-role-manager")).toBeTruthy();
+      expect(screen.getByTestId("login-role-landlord")).toBeTruthy();
+      expect(screen.getByText("Phone Number or Email")).toBeTruthy();
+      expect(screen.getByText("Password")).toBeTruthy();
+      expect(
+        screen.queryByPlaceholderText("98765 43210 or name@email.com")
+      ).toBeNull();
+      expect(screen.queryByPlaceholderText("••••••••••••")).toBeNull();
+      expect(screen.getByText("Keep me logged in for 30 days")).toBeTruthy();
+      expect(screen.getByText("Login to Account   →")).toBeTruthy();
+      expect(screen.getByText("WhatsApp OTP")).toBeTruthy();
+      expect(screen.getByText("Google")).toBeTruthy();
       expect(screen.queryByText("Continue with Google")).toBeNull();
       expect(screen.queryByText("Continue with Apple")).toBeNull();
       expect(screen.queryByText(/^or$/)).toBeNull();
@@ -25,11 +36,14 @@ describe("Mobile Authentication Tests", () => {
     it("keeps the welcome page scrollable", async () => {
       await render(<WelcomeScreen />);
       expect(screen.getByTestId("welcome-scroll-view")).toBeTruthy();
+      expect(
+        screen.getByLabelText("Nivasa — Manage. Stay. Thrive.")
+      ).toBeTruthy();
     });
 
     it("shows error on invalid login", async () => {
       await render(<LoginScreen />);
-      fireEvent.press(screen.getByText("Login"));
+      fireEvent.press(screen.getByText("Login to Account   →"));
       expect(await screen.findAllByText(/required/i)).toHaveLength(2);
     });
 

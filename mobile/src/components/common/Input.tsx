@@ -17,6 +17,9 @@ export interface CustomInputProps<T extends FieldValues> {
   type?: "text" | "password" | "email" | "number";
   error?: boolean;
   helperText?: string;
+  left?: React.ReactNode;
+  right?: React.ReactNode;
+  secureTextEntry?: boolean;
   rules?:
     | Pick<RegisterOptions<T, Path<T>>, "required">
     | Pick<RegisterOptions<T, Path<T>>, "required">[];
@@ -30,6 +33,9 @@ export function CustomInput<T extends FieldValues>({
   type = "text",
   error,
   helperText,
+  left,
+  right,
+  secureTextEntry,
   rules,
 }: CustomInputProps<T>) {
   const controllerRules = Array.isArray(rules)
@@ -50,6 +56,8 @@ export function CustomInput<T extends FieldValues>({
               mode="outlined"
               label={label}
               placeholder={placeholder}
+              left={left}
+              right={right}
               activeOutlineColor={COLORS.primary}
               outlineColor={COLORS.border}
               outlineStyle={{ borderRadius: 8 }}
@@ -59,7 +67,7 @@ export function CustomInput<T extends FieldValues>({
                 onChange(type === "number" && text !== "" ? Number(text) : text)
               }
               onBlur={onBlur}
-              secureTextEntry={type === "password"}
+              secureTextEntry={secureTextEntry ?? type === "password"}
               keyboardType={
                 type === "email"
                   ? "email-address"

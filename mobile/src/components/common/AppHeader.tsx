@@ -1,5 +1,6 @@
 import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { BrandLogo } from "./BrandLogo";
 import { COLORS } from "../../theme";
 
 interface AppHeaderProps {
@@ -25,9 +26,7 @@ export const AppHeader = ({
   return (
     <View style={styles.container}>
       <View style={styles.brand}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>N</Text>
-        </View>
+        <BrandLogo width={108} height={40} />
         <View style={styles.brandCopy}>
           <Text numberOfLines={1} style={styles.propertyName}>
             {propertyName}
@@ -46,8 +45,8 @@ export const AppHeader = ({
 
 const styles = StyleSheet.create({
   container: {
-    minHeight: 64,
-    paddingVertical: 8,
+    minHeight: 72,
+    paddingVertical: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -60,22 +59,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 12,
   },
-  logo: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: COLORS.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logoText: {
-    color: COLORS.surface,
-    fontSize: 22,
-    fontWeight: "800",
-  },
   brandCopy: {
     flex: 1,
-    marginLeft: 10,
+    minWidth: 0,
+    marginLeft: 8,
   },
   propertyName: {
     color: COLORS.primary,

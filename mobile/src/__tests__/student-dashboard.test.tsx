@@ -28,6 +28,11 @@ describe("Student Dashboard Tests", () => {
     fireEvent.press(screen.getByTestId("student-tab-complaints"));
     expect(await screen.findByTestId("student-complaints-content")).toBeTruthy();
 
+    fireEvent.press(screen.getByTestId("student-tab-meals"));
+    expect(await screen.findByTestId("student-meals-content")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("student-gate-pass-tab"));
+    expect(await screen.findByText("Gate pass requests unavailable")).toBeTruthy();
+
     fireEvent.press(screen.getByTestId("student-tab-notices"));
     expect(await screen.findByTestId("student-notices-content")).toBeTruthy();
 
