@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { PG } from "../models/pg.model";
+import { generateInvitationCode } from "../utils/invitation.util";
 
 export const createPG = async (req: Request, res: Response) => {
   try {
@@ -10,7 +11,7 @@ export const createPG = async (req: Request, res: Response) => {
       address,
       city,
       ownerId: (req as any).user._id,
-      invitationCode: require("../utils/invitation.util").generateInvitationCode(),
+      invitationCode: generateInvitationCode(),
       totalRooms: Number(totalRooms) || 0,
       facilities: facilities || [],
     });

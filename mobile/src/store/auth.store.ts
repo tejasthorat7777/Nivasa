@@ -1,4 +1,4 @@
-import create from "zustand";
+import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { User } from "../types/user.types";
 
@@ -18,7 +18,7 @@ interface AuthState {
   checkSession: () => void;
 }
 
-export const useAuthStore = create<AuthState>(
+export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       user: null,
@@ -167,7 +167,10 @@ export const useAuthStore = create<AuthState>(
       },
 
       checkSession: () => {
-        const token = localStorage.getItem("nivasa_token");
+        const token =
+          typeof localStorage === "undefined"
+            ? null
+            : localStorage.getItem("nivasa_token");
         if (token) {
           set({ isAuthenticated: true, token });
         } else {

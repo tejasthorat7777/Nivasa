@@ -19,9 +19,13 @@ Nivasa is a full-stack property management system enabling landlords, managers, 
 ```bash
 cd backend
 npm install          # Install dependencies
-npm run build        # Build TypeScript
-npm run dev          # Start with nodemon (port 4000)
+npm run dev          # Start the TypeScript API with nodemon (port 4000)
 ```
+
+Set `MONGODB_URI` in `backend/.env` to a reachable MongoDB instance before
+starting the backend. The API listens on port 4000 while MongoDB reconnects;
+`GET /health` reports whether the database is ready. API requests return 503
+until MongoDB is connected. Use `npm run build` followed by `npm start` for production.
 
 ### **Mobile**
 ```bash

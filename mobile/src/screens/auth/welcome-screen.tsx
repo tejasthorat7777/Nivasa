@@ -1,5 +1,6 @@
 import * as React from "react";
-import { View, Text, Button, Image, StyleSheet } from "react-native-paper";
+import { StyleSheet, Text, View } from "react-native";
+import { Button } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
 import { useAuthStore } from "../../store/auth.store";
 
@@ -14,11 +15,9 @@ export const WelcomeScreen = () => {
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require("../../assets/nivasa-logo.png")}
-        style={styles.logo}
-        resizeMode="contain"
-      />
+      <View style={styles.logo}>
+        <Text style={styles.logoText}>N</Text>
+      </View>
       <Text style={styles.title}>Manage your PG, all in one place.</Text>
       <Text style={styles.subtitle}>StayNest - Nivasa</Text>
       <Button mode="contained" onPress={() => navigation.navigate("Login")}>
@@ -45,6 +44,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     backgroundColor: "#1E40AF",
     borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoText: {
+    color: "#FFFFFF",
+    fontSize: 64,
+    fontWeight: "700",
   },
   title: {
     fontSize: 20,

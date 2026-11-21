@@ -1,5 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
-
 export const generateInvitationCode = (): string => {
   // Generate a 6-character alphanumeric code
   const characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

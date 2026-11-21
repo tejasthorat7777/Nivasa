@@ -1,9 +1,10 @@
 import * as React from "react";
-import { View, Text, ScrollView, Button, StyleSheet, ActivityIndicator, ErrorBoundary } from "react-native-paper";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Button } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
 import { useAuthStore } from "../../store/auth.store";
 import { useState, useEffect } from "react";
-import { api } from "../../services/api";
+import api from "../../services/api";
 import { endpoints } from "../../services/api";
 
 export const LandlordDashboard = () => {

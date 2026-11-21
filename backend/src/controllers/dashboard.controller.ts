@@ -5,6 +5,10 @@ import { StudentProfile } from "../models/studentprofile.model";
 import { Bill } from "../models/bill.model";
 import { Expense } from "../models/expense.model";
 import { Payment } from "../models/payment.model";
+import { Announcement } from "../models/announcement.model";
+import { Complaint } from "../models/complaint.model";
+import { Equipment } from "../models/equipment.model";
+import { MaintenanceTask } from "../models/maintenancetask.model";
 
 export const getLandlordDashboard = async (req: Request, res: Response) => {
   try {
@@ -55,7 +59,7 @@ export const getLandlordDashboard = async (req: Request, res: Response) => {
       .limit(5);
 
     // Recent complaints
-    const recentComplaints = await globalThis.Complaint?.find({ pgId })
+    const recentComplaints = await Complaint.find({ pgId })
       .sort({ createdAt: -1 })
       .limit(5);
 
@@ -94,25 +98,25 @@ export const getManagerDashboard = async (req: Request, res: Response) => {
     const pgId = (req as any).user.pgId;
 
     // Open complaints
-    const openComplaints = await globalThis.Complaint?.countDocuments({
+    const openComplaints = await Complaint.countDocuments({
       pgId,
       status: "OPEN",
     });
 
     // Pending maintenance
-    const pendingMaintenance = await globalThis.MaintenanceTask?.countDocuments({
+    const pendingMaintenance = await MaintenanceTask.countDocuments({
       pgId,
       status: "PENDING",
     });
 
     // Equipment failures
-    const equipmentFailures = await globalThis.Equipment?.countDocuments({
+    const equipmentFailures = await Equipment.countDocuments({
       pgId,
       status: "NOT_WORKING",
     });
 
     // Completed tasks (last 30 days)
-    const completedTasks = await globalThis.MaintenanceTask?.countDocuments({
+    const completedTasks = await MaintenanceTask.countDocuments({
       pgId,
       status: "COMPLETED",
       createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
@@ -141,7 +145,7 @@ export const getStudentDashboard = async (req: Request, res: Response) => {
     const pgId = (req as any).user.pgId;
 
     // Get student profile
-    const student = await globalThis.StudentProfile?.findOne({ userId: studentId });
+    const student = await StudentProfile.findOne({ userId: studentId });
     const pg = await PG.findById(pgId);
 
     // Get current bill
@@ -154,7 +158,7 @@ export const getStudentDashboard = async (req: Request, res: Response) => {
     // Get room info
     let roomInfo = null;
     if (student?.roomId) {
-      roomInfo = await globalThis.Room?.findById(student.roomId);
+      roomInfo = await Room.findById(student.roomId);
     }
 
     // Get upcoming announcements

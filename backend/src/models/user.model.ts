@@ -9,6 +9,8 @@ export interface IUser extends Document {
   pgId?: mongoose.Types.ObjectId;
   isActive: boolean;
   approvalStatus: "PENDING" | "APPROVED" | "REJECTED";
+  resetPasswordToken?: string;
+  resetPasswordExpires?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,12 +25,12 @@ const userSchema = new Schema<IUser>(
     pgId: { type: Schema.Types.ObjectId, ref: "PG" },
     isActive: { type: Boolean, default: true },
     approvalStatus: { type: String, enum: ["PENDING", "APPROVED", "REJECTED"], default: "PENDING" },
+    resetPasswordToken: { type: String, select: false },
+    resetPasswordExpires: { type: Number, select: false },
   },
   { timestamps: true }
 );
 
-// Index for faster lookups
-userSchema.index({ email: 1 });
 userSchema.index({ role: 1, pgId: 1 });
 
 export const User = model<IUser>("User", userSchema);

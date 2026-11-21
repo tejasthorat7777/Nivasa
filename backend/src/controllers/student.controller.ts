@@ -53,22 +53,18 @@ export const approveStudent = async (req: Request, res: Response) => {
       });
     }
 
-    // Update approval status
-    student.approvalStatus = "APPROVED";
-    await student.save();
-
-    // Update user approval status
-    await User.findByIdAndUpdate(student.userId, { approvalStatus: "APPROVED" });
+    const user = await User.findByIdAndUpdate(
+      student.userId,
+      { approvalStatus: "APPROVED" },
+      { new: true }
+    ).select("-passwordHash");
 
     return res.status(200).json({
       success: true,
       message: "Student approved successfully",
       student: {
         ...student.toObject(),
-        user: {
-          ...student.userId._doc,
-          approvalStatus: "APPROVED",
-        },
+        user,
       },
     });
   } catch (error: any) {
