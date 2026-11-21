@@ -8,9 +8,12 @@ import { useNavigation } from "@react-navigation/native";
 import { BrandLogo } from "../../components/common/BrandLogo";
 import { COLORS } from "../../theme";
 import { useAuthStore } from "../../store/auth.store";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../../navigation.types";
 
 export const SplashScreen = () => {
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const checkSession = useAuthStore((state) => state.checkSession);
   const isLoading = useAuthStore((state) => state.isLoading);
 

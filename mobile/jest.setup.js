@@ -4,6 +4,7 @@ jest.mock("@react-navigation/native", () => ({
   useNavigation: () => ({
     navigate: jest.fn(),
     goBack: jest.fn(),
+    reset: jest.fn(),
   }),
 }));
 
@@ -41,8 +42,24 @@ jest.mock("./src/services/api", () => ({
         },
       },
     })),
+    patch: jest.fn(async () => ({ data: { success: true } })),
+    post: jest.fn(async () => ({ data: { success: true } })),
   },
   endpoints: {
+    pg: {
+      myPG: "/pg/my-pg",
+      myPGs: "/pg/my-pgs",
+      active: "/pg/active",
+      buildingSetup: "/pg/my-pg/building-setup",
+      create: "/pg",
+    },
+    rooms: {
+      list: "/rooms",
+    },
+    students: {
+      lookup: "/students/lookup",
+      assignBed: "/students/assign-bed",
+    },
     dashboard: {
       student: "/dashboard/student",
       manager: "/dashboard/manager",

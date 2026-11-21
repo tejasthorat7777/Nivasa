@@ -23,7 +23,11 @@ interface ManagerStats {
 
 type ManagerTab = "operations" | "maintenance" | "cleaning" | "staff";
 
-export const ManagerDashboard = () => {
+export const ManagerDashboard = ({
+  onProfilePress,
+}: {
+  onProfilePress?: () => void;
+}) => {
   const { user, pgId } = useAuthStore.getState();
   const [tab, setTab] = React.useState<ManagerTab>("operations");
   const [loading, setLoading] = React.useState(true);
@@ -72,7 +76,11 @@ export const ManagerDashboard = () => {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
-        <AppHeader name={user?.name} role="Manager" />
+        <AppHeader
+          name={user?.name}
+          role="Manager"
+          onProfilePress={onProfilePress}
+        />
         {loading && (
           <View style={styles.statusRow}>
             <ActivityIndicator size="small" color={COLORS.primary} />

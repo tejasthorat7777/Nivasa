@@ -47,6 +47,9 @@ export const endpoints = {
   },
   pg: {
     myPG: "/pg/my-pg",
+    myPGs: "/pg/my-pgs",
+    active: "/pg/active",
+    buildingSetup: "/pg/my-pg/building-setup",
     create: "/pg",
     update: "/pg/:id",
   },
@@ -58,6 +61,8 @@ export const endpoints = {
   },
   students: {
     list: "/students",
+    lookup: "/students/lookup",
+    assignBed: "/students/assign-bed",
     get: "/students/:id",
     approve: "/students/:id/approve",
     assignRoom: "/students/:id/assign-room",

@@ -1,10 +1,13 @@
 import * as React from "react";
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
+  Share,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { Button } from "react-native-paper";
@@ -18,7 +21,17 @@ import { COLORS } from "../../theme";
 type LandlordTab = "home" | "rooms" | "approvals" | "finance";
 
 interface LandlordDashboardData {
-  pg?: { name?: string; city?: string };
+  pg?: {
+    name?: string;
+    city?: string;
+    invitationCode?: string;
+    totalRooms?: number;
+    buildingSetup?: {
+      floors?: Array<{
+        rooms?: Array<{ beds?: number }>;
+      }>;
+    };
+  };
   occupancy?: {
     totalRooms?: number;
     occupiedRooms?: number;
@@ -37,13 +50,40 @@ interface LandlordDashboardData {
   recentComplaints?: any[];
 }
 
-export const LandlordDashboard = () => {
-  const { user, pgId } = useAuthStore.getState();
+interface Property {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  invitationCode?: string;
+  totalRooms?: number;
+}
+
+export const LandlordDashboard = ({
+  onProfilePress,
+  onBuildingSetupPress,
+}: {
+  onProfilePress?: () => void;
+  onBuildingSetupPress?: () => void;
+}) => {
+  const user = useAuthStore((state) => state.user);
+  const pgId = useAuthStore((state) => state.pgId);
   const [tab, setTab] = React.useState<LandlordTab>("home");
   const [retry, setRetry] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [inviteShareError, setInviteShareError] = React.useState<string | null>(
+    null
+  );
   const [dashboard, setDashboard] = React.useState<LandlordDashboardData>({});
+  const [propertiesVisible, setPropertiesVisible] = React.useState(false);
+  const [properties, setProperties] = React.useState<Property[]>([]);
+  const [propertyLoading, setPropertyLoading] = React.useState(false);
+  const [propertySaving, setPropertySaving] = React.useState(false);
+  const [propertyError, setPropertyError] = React.useState<string | null>(null);
+  const [propertyName, setPropertyName] = React.useState("");
+  const [propertyAddress, setPropertyAddress] = React.useState("");
+  const [propertyCity, setPropertyCity] = React.useState("");
 
   React.useEffect(() => {
     let active = true;
@@ -81,6 +121,134 @@ export const LandlordDashboard = () => {
   const expenses = revenue.monthlyExpenses ?? 0;
   const payments = dashboard.recentPayments ?? [];
   const complaints = dashboard.recentComplaints ?? [];
+  const configuredFloors = dashboard.pg?.buildingSetup?.floors ?? [];
+  const configuredRoomCount = configuredFloors.reduce(
+    (count, floor) => count + (floor.rooms?.length ?? 0),
+    0
+  );
+  const configuredBedCount = configuredFloors.reduce(
+    (count, floor) =>
+      count +
+      (floor.rooms ?? []).reduce((roomCount, room) => roomCount + (room.beds ?? 0), 0),
+    0
+  );
+
+  const shareInvitationCode = async () => {
+    const invitationCode = dashboard.pg?.invitationCode;
+    if (!invitationCode) return;
+
+    setInviteShareError(null);
+    try {
+      await Share.share({
+        message: `Join ${dashboard.pg?.name || "our PG"} on Nivasa with this invitation code: ${invitationCode}`,
+      });
+    } catch (shareError) {
+      console.error("Failed to share PG invitation code:", shareError);
+      setInviteShareError("Unable to open the share menu. Please try again.");
+    }
+  };
+
+  const openProperties = async () => {
+    setPropertiesVisible(true);
+    setPropertyLoading(true);
+    setPropertyError(null);
+    try {
+      const { data } = await api.get(endpoints.pg.myPGs);
+      setProperties(Array.isArray(data.properties) ? data.properties : []);
+    } catch (requestError) {
+      console.error("Failed to load landlord properties:", requestError);
+      setPropertyError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to load properties. Please try again."
+      );
+    } finally {
+      setPropertyLoading(false);
+    }
+  };
+
+  const activateProperty = async (property: Property) => {
+    setPropertySaving(true);
+    setPropertyError(null);
+    try {
+      const { data } = await api.patch(endpoints.pg.active, {
+        pgId: property.id,
+      });
+      if (!data.success) {
+        throw new Error(data.message || "Unable to switch property.");
+      }
+
+      useAuthStore.setState((state) => ({
+        pgId: property.id,
+        user: state.user ? { ...state.user, pgId: property.id } : null,
+      }));
+      setPropertiesVisible(false);
+      setRetry((value) => value + 1);
+    } catch (requestError) {
+      console.error("Failed to select landlord property:", requestError);
+      setPropertyError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to switch property. Please try again."
+      );
+    } finally {
+      setPropertySaving(false);
+    }
+  };
+
+  const createProperty = async () => {
+    const name = propertyName.trim();
+    const address = propertyAddress.trim();
+    const city = propertyCity.trim();
+    if (!name || !address || !city) {
+      setPropertyError("Enter the property name, address, and city.");
+      return;
+    }
+
+    setPropertySaving(true);
+    setPropertyError(null);
+    try {
+      const { data } = await api.post(endpoints.pg.create, {
+        name,
+        address,
+        city,
+        totalRooms: 0,
+      });
+      if (!data.success || !data.pg?.id) {
+        throw new Error(data.message || "Unable to create property.");
+      }
+
+      const property: Property = { ...data.pg, id: data.pg.id };
+      setProperties((current) => [...current, property]);
+      const activeResponse = await api.patch(endpoints.pg.active, {
+        pgId: property.id,
+      });
+      if (!activeResponse.data.success) {
+        throw new Error(
+          activeResponse.data.message ||
+            "Property was created, but could not be selected."
+        );
+      }
+      useAuthStore.setState((state) => ({
+        pgId: property.id,
+        user: state.user ? { ...state.user, pgId: property.id } : null,
+      }));
+      setPropertyName("");
+      setPropertyAddress("");
+      setPropertyCity("");
+      setPropertiesVisible(false);
+      setRetry((value) => value + 1);
+    } catch (requestError) {
+      console.error("Failed to create landlord property:", requestError);
+      setPropertyError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to create property. Please try again."
+      );
+    } finally {
+      setPropertySaving(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -94,6 +262,7 @@ export const LandlordDashboard = () => {
           role="Landlord"
           propertyName={dashboard.pg?.name || "Nivasa"}
           location={dashboard.pg?.city}
+          onProfilePress={onProfilePress}
         />
 
         {loading && (
@@ -130,6 +299,33 @@ export const LandlordDashboard = () => {
               <Text style={styles.liveBadge}>LIVE</Text>
             </View>
 
+            {onBuildingSetupPress && (
+              <Button
+                mode="outlined"
+                onPress={onBuildingSetupPress}
+                testID="landlord-building-setup-button"
+              >
+                Building setup & facilities
+              </Button>
+            )}
+            <Button
+              mode="outlined"
+              onPress={() => void openProperties()}
+              testID="landlord-manage-properties"
+            >
+              Manage properties
+            </Button>
+
+            {!!configuredFloors.length && (
+              <View style={styles.layoutSummary} testID="landlord-layout-summary">
+                <Text style={styles.invitationLabel}>BUILDING LAYOUT</Text>
+                <Text style={styles.cardTitle}>
+                  {configuredFloors.length} floors · {configuredRoomCount} rooms ·{" "}
+                  {configuredBedCount} beds
+                </Text>
+              </View>
+            )}
+
             <View style={styles.metricsGrid}>
               <MetricCard
                 label="Collected"
@@ -160,6 +356,31 @@ export const LandlordDashboard = () => {
               <QuickAction icon="₹" label="Payments" onPress={() => setTab("finance")} />
               <QuickAction icon="!" label="Alerts" onPress={() => setTab("home")} />
             </View>
+
+            {dashboard.pg?.invitationCode && (
+              <View
+                style={styles.invitationCard}
+                testID="landlord-invitation-card"
+              >
+                <View style={styles.invitationCopy}>
+                  <Text style={styles.invitationLabel}>PG INVITATION CODE</Text>
+                  <Text selectable style={styles.invitationCode}>
+                    {dashboard.pg.invitationCode}
+                  </Text>
+                  <Text style={styles.mutedText}>
+                    Share this code with residents or managers joining your PG.
+                  </Text>
+                </View>
+                <Button mode="outlined" onPress={() => void shareInvitationCode()}>
+                  Share code
+                </Button>
+                {!!inviteShareError && (
+                  <Text accessibilityRole="alert" style={styles.errorText}>
+                    {inviteShareError}
+                  </Text>
+                )}
+              </View>
+            )}
 
             <View style={styles.card}>
               <View style={styles.sectionHeader}>
@@ -308,6 +529,108 @@ export const LandlordDashboard = () => {
         <NavItem testID="landlord-tab-approvals" label="Approvals" icon="✓" active={tab === "approvals"} onPress={() => setTab("approvals")} />
         <NavItem testID="landlord-tab-ledger" label="Ledger" icon="₹" active={tab === "finance"} onPress={() => setTab("finance")} />
       </View>
+
+      <Modal
+        visible={propertiesVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPropertiesVisible(false)}
+      >
+        <View style={styles.propertyModalBackdrop}>
+          <View style={styles.propertyModal}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.cardTitle}>Your properties</Text>
+              <Pressable
+                onPress={() => setPropertiesVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close properties"
+              >
+                <Text style={styles.linkText}>Close</Text>
+              </Pressable>
+            </View>
+
+            {propertyLoading ? (
+              <ActivityIndicator color={COLORS.primary} />
+            ) : (
+              <ScrollView
+                style={styles.propertyList}
+                keyboardShouldPersistTaps="handled"
+              >
+                {properties.map((property) => (
+                  <Pressable
+                    key={property.id}
+                    onPress={() => void activateProperty(property)}
+                    disabled={propertySaving || property.id === pgId}
+                    style={[
+                      styles.propertyOption,
+                      property.id === pgId && styles.propertyOptionActive,
+                    ]}
+                    testID={`landlord-property-${property.id}`}
+                  >
+                    <View style={styles.propertyOptionCopy}>
+                      <Text style={styles.cardTitle}>{property.name}</Text>
+                      <Text style={styles.mutedText}>
+                        {property.city} · {property.address}
+                      </Text>
+                    </View>
+                    {property.id === pgId && (
+                      <Text style={styles.propertyActiveLabel}>ACTIVE</Text>
+                    )}
+                  </Pressable>
+                ))}
+                {!properties.length && (
+                  <Text style={styles.mutedText}>
+                    No properties yet. Add your first property below.
+                  </Text>
+                )}
+              </ScrollView>
+            )}
+
+            <Text style={styles.propertyFormTitle}>Add a property</Text>
+            <Text style={styles.propertyFieldLabel}>Property name</Text>
+            <TextInput
+              accessibilityLabel="Property name"
+              testID="property-name-input"
+              style={styles.propertyInput}
+              value={propertyName}
+              onChangeText={setPropertyName}
+              editable={!propertySaving}
+            />
+            <Text style={styles.propertyFieldLabel}>Street address</Text>
+            <TextInput
+              accessibilityLabel="Property address"
+              testID="property-address-input"
+              style={styles.propertyInput}
+              value={propertyAddress}
+              onChangeText={setPropertyAddress}
+              editable={!propertySaving}
+            />
+            <Text style={styles.propertyFieldLabel}>City</Text>
+            <TextInput
+              accessibilityLabel="Property city"
+              testID="property-city-input"
+              style={styles.propertyInput}
+              value={propertyCity}
+              onChangeText={setPropertyCity}
+              editable={!propertySaving}
+            />
+            {!!propertyError && (
+              <Text accessibilityRole="alert" style={styles.errorText}>
+                {propertyError}
+              </Text>
+            )}
+            <Button
+              mode="contained"
+              loading={propertySaving}
+              disabled={propertySaving}
+              onPress={() => void createProperty()}
+              testID="landlord-create-property"
+            >
+              Add property
+            </Button>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -523,6 +846,37 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     borderRadius: 10,
   },
+  invitationCard: {
+    padding: 16,
+    gap: 12,
+    backgroundColor: COLORS.primarySoft,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+  },
+  invitationCopy: {
+    gap: 5,
+  },
+  layoutSummary: {
+    padding: 14,
+    gap: 5,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+  },
+  invitationLabel: {
+    color: COLORS.primary,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.7,
+  },
+  invitationCode: {
+    color: COLORS.primary,
+    fontSize: 24,
+    fontWeight: "800",
+    letterSpacing: 2,
+  },
   quickAction: {
     minWidth: 70,
     alignItems: "center",
@@ -729,6 +1083,66 @@ const styles = StyleSheet.create({
     flex: 1,
     color: COLORS.danger,
     fontSize: 12,
+  },
+  propertyModalBackdrop: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 18,
+    backgroundColor: "rgba(12, 24, 32, 0.55)",
+  },
+  propertyModal: {
+    maxHeight: "90%",
+    padding: 20,
+    gap: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: 16,
+  },
+  propertyList: {
+    flexGrow: 0,
+    maxHeight: 220,
+  },
+  propertyOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    marginBottom: 8,
+  },
+  propertyOptionActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primarySoft,
+  },
+  propertyOptionCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  propertyActiveLabel: {
+    color: COLORS.primary,
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  propertyFormTitle: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  propertyFieldLabel: {
+    color: COLORS.text,
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: -8,
+  },
+  propertyInput: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 8,
+    color: COLORS.text,
+    backgroundColor: COLORS.surface,
   },
   bottomNav: {
     flexDirection: "row",

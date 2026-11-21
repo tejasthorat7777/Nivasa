@@ -2,17 +2,14 @@ import * as React from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BrandLogo } from "../../components/common/BrandLogo";
 import { COLORS } from "../../theme";
-import { useAuthStore } from "../../store/auth.store";
+import type { RootStackParamList } from "../../navigation.types";
 
 export const WelcomeScreen = () => {
-  const navigation = useNavigation();
-  const { checkSession } = useAuthStore.getState();
-
-  React.useEffect(() => {
-    checkSession();
-  }, [checkSession]);
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   return (
     <ScrollView

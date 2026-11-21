@@ -1,5 +1,15 @@
 import { Router, Request, Response } from "express";
-import { signupLandlord, signupManager, signupStudent, loginUser, logoutUser, forgotPassword, resetPassword, getMe } from "../controllers/auth.controller";
+import {
+  signupLandlord,
+  signupManager,
+  signupStudent,
+  loginUser,
+  logoutUser,
+  forgotPassword,
+  resetPassword,
+  getMe,
+  updateProfile,
+} from "../controllers/auth.controller";
 import { authenticateUser } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -21,6 +31,7 @@ router.post("/logout", authenticateUser, logoutUser);
 
 // Get current user profile
 router.get("/me", authenticateUser, getMe);
+router.patch("/me", authenticateUser, updateProfile);
 
 // Forgot password
 router.post("/forgot-password", forgotPassword);

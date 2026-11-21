@@ -8,6 +8,7 @@ import dashboardRoutes from "./routes/dashboard.routes";
 import equipmentRoutes from "./routes/equipment.routes";
 import pgRoutes from "./routes/pg.routes";
 import roomRoutes from "./routes/room.routes";
+import studentRoutes from "./routes/student.routes";
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/pg", pgRoutes);
 app.use("/api/rooms", roomRoutes);
+app.use("/api/students", studentRoutes);
 app.use("/api/announcements", announcementRoutes);
 app.use("/api/equipment", equipmentRoutes);
 app.use("/api", checkoutRoutes);

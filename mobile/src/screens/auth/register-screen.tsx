@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,9 +10,11 @@ import {
 } from "react-native";
 import { Button } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BrandLogo } from "../../components/common/BrandLogo";
 import { CustomInput as Input } from "../../components/common/Input";
 import { useAuthStore } from "../../store/auth.store";
+import type { AccountRole, RootStackParamList } from "../../navigation.types";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,7 +29,9 @@ const landlordRegisterSchema = z.object({
   pgName: z.string().min(2).max(100),
   pgAddress: z.string().min(2).max(200),
   city: z.string().min(2).max(50),
-  totalRooms: z.number().int().min(1).max(50),
+}).refine((data) => data.password === data.confirmPassword, {
+  path: ["confirmPassword"],
+  message: "Passwords do not match",
 });
 
 const managerRegisterSchema = z.object({
@@ -36,6 +41,9 @@ const managerRegisterSchema = z.object({
   password: z.string().min(8),
   confirmPassword: z.string(),
   pgInvitationCode: z.string().regex(/^[A-Z2-9]{6}$/),
+}).refine((data) => data.password === data.confirmPassword, {
+  path: ["confirmPassword"],
+  message: "Passwords do not match",
 });
 
 const studentRegisterSchema = z.object({
@@ -47,12 +55,24 @@ const studentRegisterSchema = z.object({
   collegeName: z.string().min(2).max(100),
 });
 
-export const RegisterScreen = ({ route }: any) => {
+const accountRoles: { value: AccountRole; label: string }[] = [
+  { value: "STUDENT", label: "Student" },
+  { value: "MANAGER", label: "Manager" },
+  { value: "LANDLORD", label: "Landlord" },
+];
+
+export const RegisterScreen = ({
+  route,
+}: {
+  route?: { params?: RootStackParamList["Register"] };
+}) => {
   const { registerLandlord, registerManager, registerStudent } =
     useAuthStore.getState();
-  const navigation = useNavigation();
-  const { role: accountRole } = useAuthStore.getState();
-  const role = accountRole ?? "STUDENT";
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [role, setRole] = React.useState<AccountRole>(
+    route?.params?.role ?? "STUDENT"
+  );
 
   // Determine which registration flow based on role or route
   const formSchema =
@@ -65,13 +85,23 @@ export const RegisterScreen = ({ route }: any) => {
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
-  } = useForm<
-    formSchema extends z.ZodObject<any, any, any> ? z.infer<formSchema> : any
-  >({
+  } = useForm<any>({
     resolver: zodResolver(formSchema),
   });
+  const getErrorMessage = (field: string): string | undefined => {
+    const message = errors[field]?.message;
+    return typeof message === "string" ? message : undefined;
+  };
   const [submitError, setSubmitError] = React.useState<string | null>(null);
+
+  const selectRole = (nextRole: AccountRole) => {
+    if (nextRole === role) return;
+    setRole(nextRole);
+    reset({});
+    setSubmitError(null);
+  };
 
   const onSubmit = async (data: any) => {
     setSubmitError(null);
@@ -81,14 +111,22 @@ export const RegisterScreen = ({ route }: any) => {
     try {
       if (role === "LANDLORD") {
         await registerLandlord(registrationData);
-        navigation.navigate("Dashboard");
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "BuildingSetup", params: { onboarding: true } }],
+        });
       } else if (role === "MANAGER") {
         await registerManager(registrationData);
-        navigation.navigate("Dashboard");
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Dashboard" }],
+        });
       } else {
         await registerStudent(registrationData);
-        // Student will be pending approval, navigate to welcome
-        navigation.navigate("Welcome");
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Welcome" }],
+        });
       }
     } catch (error) {
       setSubmitError(
@@ -117,6 +155,31 @@ export const RegisterScreen = ({ route }: any) => {
       </Button>
       <BrandLogo width={164} height={55} style={styles.brandMark} />
       <Text style={styles.eyebrow}>ACCOUNT SETUP</Text>
+      <Text style={styles.rolePrompt}>Create an account as</Text>
+      <View style={styles.roleSelector}>
+        {accountRoles.map((option) => (
+          <Pressable
+            key={option.value}
+            accessibilityRole="button"
+            accessibilityState={{ selected: role === option.value }}
+            onPress={() => selectRole(option.value)}
+            style={[
+              styles.roleOption,
+              role === option.value && styles.roleOptionSelected,
+            ]}
+            testID={`register-role-${option.value.toLowerCase()}`}
+          >
+            <Text
+              style={[
+                styles.roleOptionText,
+                role === option.value && styles.roleOptionTextSelected,
+              ]}
+            >
+              {option.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
       <Text style={styles.title}>
         {role === "LANDLORD"
           ? "Landlord Registration"
@@ -126,9 +189,9 @@ export const RegisterScreen = ({ route }: any) => {
       </Text>
       <Text style={styles.subtitle}>
         {role === "LANDLORD"
-          ? "Create your PG account"
+          ? "Create your account and add your PG details"
           : role === "MANAGER"
-            ? "Join as manager"
+            ? "Join a PG using the invitation code from its owner"
             : "Join PG as student"}
       </Text>
 
@@ -141,7 +204,7 @@ export const RegisterScreen = ({ route }: any) => {
           name="fullName"
           rules={[{ required: true }]}
           error={!!errors.fullName}
-          helperText={errors.fullName?.message}
+          helperText={getErrorMessage("fullName")}
         />
       </View>
 
@@ -153,7 +216,7 @@ export const RegisterScreen = ({ route }: any) => {
           name="email"
           rules={[{ required: true }]}
           error={!!errors.email}
-          helperText={errors.email?.message}
+          helperText={getErrorMessage("email")}
         />
       </View>
 
@@ -165,7 +228,7 @@ export const RegisterScreen = ({ route }: any) => {
           name="phone"
           rules={[{ required: true }]}
           error={!!errors.phone}
-          helperText={errors.phone?.message}
+          helperText={getErrorMessage("phone")}
         />
       </View>
 
@@ -178,7 +241,7 @@ export const RegisterScreen = ({ route }: any) => {
           name="password"
           rules={[{ required: true }]}
           error={!!errors.password}
-          helperText={errors.password?.message}
+          helperText={getErrorMessage("password")}
         />
       </View>
 
@@ -192,7 +255,7 @@ export const RegisterScreen = ({ route }: any) => {
             name="confirmPassword"
             rules={{ required: true }}
             error={!!errors.confirmPassword}
-            helperText={errors.confirmPassword?.message}
+            helperText={getErrorMessage("confirmPassword")}
           />
         </View>
       )}
@@ -206,7 +269,7 @@ export const RegisterScreen = ({ route }: any) => {
             name="pgName"
             rules={[{ required: true }]}
             error={!!errors.pgName}
-            helperText={errors.pgName?.message}
+            helperText={getErrorMessage("pgName")}
           />
         </View>
       )}
@@ -220,7 +283,7 @@ export const RegisterScreen = ({ route }: any) => {
             name="pgAddress"
             rules={[{ required: true }]}
             error={!!errors.pgAddress}
-            helperText={errors.pgAddress?.message}
+            helperText={getErrorMessage("pgAddress")}
           />
         </View>
       )}
@@ -234,22 +297,7 @@ export const RegisterScreen = ({ route }: any) => {
             name="city"
             rules={[{ required: true }]}
             error={!!errors.city}
-            helperText={errors.city?.message}
-          />
-        </View>
-      )}
-
-      {role === "LANDLORD" && (
-        <View style={styles.inputGroup}>
-          <Input
-            label="Total Rooms"
-            placeholder="Enter total rooms"
-            type="number"
-            control={control}
-            name="totalRooms"
-            rules={{ required: true }}
-            error={!!errors.totalRooms}
-            helperText={errors.totalRooms?.message}
+            helperText={getErrorMessage("city")}
           />
         </View>
       )}
@@ -263,8 +311,13 @@ export const RegisterScreen = ({ route }: any) => {
             name="pgInvitationCode"
             rules={[{ required: true }]}
             error={!!errors.pgInvitationCode}
-            helperText={errors.pgInvitationCode?.message}
+            helperText={getErrorMessage("pgInvitationCode")}
           />
+          {role === "MANAGER" && (
+            <Text style={styles.invitationHint}>
+              Ask your PG owner for the invitation code.
+            </Text>
+          )}
         </View>
       )}
 
@@ -277,7 +330,7 @@ export const RegisterScreen = ({ route }: any) => {
             name="collegeName"
             rules={[{ required: true }]}
             error={!!errors.collegeName}
-            helperText={errors.collegeName?.message}
+            helperText={getErrorMessage("collegeName")}
           />
         </View>
       )}
@@ -342,6 +395,39 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     marginBottom: 8,
   },
+  rolePrompt: {
+    color: COLORS.text,
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  roleSelector: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+  },
+  roleOption: {
+    flex: 1,
+    minHeight: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 9,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.surface,
+  },
+  roleOptionSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primarySoft,
+  },
+  roleOptionText: {
+    color: COLORS.muted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  roleOptionTextSelected: {
+    color: COLORS.primary,
+  },
   title: {
     fontSize: 22,
     fontWeight: "700",
@@ -363,6 +449,12 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     marginBottom: 16,
+  },
+  invitationHint: {
+    color: COLORS.muted,
+    fontSize: 12,
+    marginTop: -8,
+    marginBottom: 8,
   },
   loginLink: {
     marginTop: 24,

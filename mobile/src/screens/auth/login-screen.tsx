@@ -10,9 +10,11 @@ import {
 } from "react-native";
 import { Button, TextInput } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { BrandLogo } from "../../components/common/BrandLogo";
 import { CustomInput as Input } from "../../components/common/Input";
 import { useAuthStore } from "../../store/auth.store";
+import type { RootStackParamList } from "../../navigation.types";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -42,7 +44,8 @@ const portalRoles = [
 ] as const;
 
 export const LoginScreen = () => {
-  const navigation = useNavigation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { login } = useAuthStore.getState();
   const [submitError, setSubmitError] = React.useState<string | null>(null);
   const [selectedPortal, setSelectedPortal] =
@@ -63,7 +66,10 @@ export const LoginScreen = () => {
     setSubmitError(null);
     try {
       await login(data.identifier, data.password);
-      navigation.navigate("Dashboard");
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Dashboard" }],
+      });
     } catch (error) {
       setSubmitError(
         error instanceof Error ? error.message : "Login failed."
@@ -195,14 +201,6 @@ export const LoginScreen = () => {
             </Text>
           )}
 
-          <Button
-            mode="outlined"
-            disabled
-            style={styles.biometricButtonShell}
-            contentStyle={styles.biometricButton}
-          >
-            Use Fingerprint / Face ID
-          </Button>
         </View>
 
         <View style={styles.socialSection}>
@@ -240,7 +238,9 @@ export const LoginScreen = () => {
           <Text style={styles.footerText}>Don't have an account yet?</Text>
           <Pressable
             accessibilityRole="button"
-            onPress={() => navigation.navigate("Register")}
+            onPress={() =>
+              navigation.navigate("Register", { role: selectedPortal })
+            }
           >
             <Text style={styles.createAccount}>Create Account</Text>
           </Pressable>
@@ -385,17 +385,6 @@ const styles = StyleSheet.create({
   submitButton: {
     minHeight: 52,
     paddingHorizontal: 18,
-  },
-  biometricButtonShell: {
-    alignSelf: "stretch",
-    width: "100%",
-    marginTop: 8,
-    borderRadius: 12,
-    borderColor: "#C9DBD4",
-    backgroundColor: COLORS.surface,
-  },
-  biometricButton: {
-    minHeight: 44,
   },
   socialSection: {
     marginTop: 12,

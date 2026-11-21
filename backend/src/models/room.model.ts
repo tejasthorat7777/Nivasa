@@ -4,7 +4,7 @@ export interface IRoom extends Document {
   pgId: mongoose.Types.ObjectId;
   roomNumber: number;
   floor: number;
-  sharingType: "SINGLE" | "DOUBLE" | "TRIPLE";
+  sharingType: "SINGLE" | "DOUBLE" | "TRIPLE" | "MULTI";
   capacity: number;
   monthlyRent: number;
   occupiedBeds: number;
@@ -17,7 +17,11 @@ const roomSchema = new Schema<IRoom>(
     pgId: { type: Schema.Types.ObjectId, ref: "PG", required: true },
     roomNumber: { type: Number, required: true },
     floor: { type: Number, required: true },
-    sharingType: { type: String, enum: ["SINGLE", "DOUBLE", "TRIPLE"], required: true },
+    sharingType: {
+      type: String,
+      enum: ["SINGLE", "DOUBLE", "TRIPLE", "MULTI"],
+      required: true,
+    },
     capacity: { type: Number, required: true },
     monthlyRent: { type: Number, required: true },
     occupiedBeds: { type: Number, default: 0 },
@@ -28,5 +32,6 @@ const roomSchema = new Schema<IRoom>(
 );
 
 roomSchema.index({ pgId: 1, status: 1 });
+roomSchema.index({ pgId: 1, floor: 1, roomNumber: 1 }, { unique: true });
 
 export const Room = model<IRoom>("Room", roomSchema);

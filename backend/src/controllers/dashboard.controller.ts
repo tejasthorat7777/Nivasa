@@ -145,20 +145,32 @@ export const getStudentDashboard = async (req: Request, res: Response) => {
     const pgId = (req as any).user.pgId;
 
     // Get student profile
-    const student = await StudentProfile.findOne({ userId: studentId });
+    const student = await StudentProfile.findOne({
+      userId: studentId,
+      status: "ACTIVE",
+    });
     const pg = await PG.findById(pgId);
 
     // Get current bill
-    const currentBill = await Bill.findOne({
-      pgId,
-      studentId,
-      status: { $ne: "PAID" },
-    }).sort({ createdAt: -1 });
+    const currentBill = student
+      ? await Bill.findOne({
+          pgId,
+          studentId: student._id,
+          status: { $ne: "PAID" },
+        }).sort({ createdAt: -1 })
+      : null;
 
     // Get room info
     let roomInfo = null;
     if (student?.roomId) {
-      roomInfo = await Room.findById(student.roomId);
+      const room = await Room.findOne({ _id: student.roomId, pgId });
+      if (room) {
+        roomInfo = {
+          ...room.toObject(),
+          bedNumber: student.bedNumber,
+          monthlyRent: student.monthlyRent,
+        };
+      }
     }
 
     // Get upcoming announcements

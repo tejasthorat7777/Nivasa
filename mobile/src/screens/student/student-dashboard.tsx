@@ -25,7 +25,11 @@ interface StudentDashboardData {
   student: any;
 }
 
-export const StudentDashboard = () => {
+export const StudentDashboard = ({
+  onProfilePress,
+}: {
+  onProfilePress?: () => void;
+}) => {
   const { user, pgId } = useAuthStore.getState();
   const [tab, setTab] = React.useState<StudentTab>("home");
   const [mealPassView, setMealPassView] = React.useState<MealPassView>("menu");
@@ -101,7 +105,11 @@ export const StudentDashboard = () => {
   const outstanding = dashboard.currentBill?.balanceAmount
     ?? dashboard.currentBill?.totalAmount
     ?? 0;
-  const monthlyRent = dashboard.currentBill?.rentAmount ?? 0;
+  const monthlyRent =
+    dashboard.student?.monthlyRent ??
+    dashboard.currentBill?.rentAmount ??
+    dashboard.roomInfo?.monthlyRent ??
+    0;
   const announcements = dashboard.announcements ?? [];
 
   return (
@@ -116,6 +124,7 @@ export const StudentDashboard = () => {
           role="Student"
           propertyName={dashboard.pg?.name || "Nivasa"}
           location={dashboard.pg?.city}
+          onProfilePress={onProfilePress}
         />
 
         <View style={styles.welcomeBlock}>
@@ -132,6 +141,19 @@ export const StudentDashboard = () => {
 
         {tab === "home" && (
           <>
+            {user?.studentCode && (
+              <View style={styles.studentCodeCard} testID="student-account-code">
+                <View style={styles.studentCodeCopy}>
+                  <Text style={styles.studentCodeLabel}>STUDENT ACCOUNT CODE</Text>
+                  <Text style={styles.mutedSmall}>
+                    Share this code with your landlord for bed assignment.
+                  </Text>
+                </View>
+                <Text style={styles.studentCodeValue} testID="student-code">
+                  {user.studentCode}
+                </Text>
+              </View>
+            )}
             <View style={styles.card}>
               <View style={styles.rowBetween}>
                 <View style={styles.roomIcon}>
@@ -140,7 +162,7 @@ export const StudentDashboard = () => {
                 <View style={styles.roomHeading}>
                   <Text style={styles.cardTitle}>
                     {dashboard.roomInfo
-                      ? `Room ${dashboard.roomInfo.roomNumber}`
+                      ? `Room ${dashboard.roomInfo.roomNumber} · Bed ${dashboard.roomInfo.bedNumber}`
                       : "Room assignment"}
                   </Text>
                   <Text style={styles.mutedSmall}>
@@ -169,7 +191,7 @@ export const StudentDashboard = () => {
                 </View>
               ) : (
                 <Text style={styles.mutedText}>
-                  Room details will appear here after your manager assigns a room.
+                  Room details will appear here after your landlord assigns a bed.
                 </Text>
               )}
             </View>
@@ -545,6 +567,31 @@ const styles = StyleSheet.create({
   },
   welcomeBlock: {
     gap: 6,
+  },
+  studentCodeCard: {
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    backgroundColor: COLORS.primarySoft,
+    borderRadius: 12,
+  },
+  studentCodeCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  studentCodeLabel: {
+    color: COLORS.primary,
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.7,
+  },
+  studentCodeValue: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 1.2,
   },
   badge: {
     alignSelf: "flex-start",

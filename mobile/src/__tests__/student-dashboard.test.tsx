@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 import { StudentDashboard } from "../screens/student/student-dashboard";
+import api from "../services/api";
+import { useAuthStore } from "../store/auth.store";
 
 describe("Student Dashboard Tests", () => {
   it("renders without crashing", async () => {
@@ -38,5 +40,44 @@ describe("Student Dashboard Tests", () => {
 
     fireEvent.press(screen.getByTestId("student-tab-home"));
     expect(await screen.findByText("CURRENT BILL")).toBeTruthy();
+  });
+
+  it("shows a linked student code, bed number, and assigned monthly rent", async () => {
+    useAuthStore.setState({
+      user: {
+        id: "student-1",
+        name: "Asha Student",
+        email: "asha@example.com",
+        phone: "9876543210",
+        role: "STUDENT",
+        approvalStatus: "APPROVED",
+        studentCode: "A1B2C3D4E5",
+      },
+    });
+    jest.mocked(api.get).mockResolvedValueOnce({
+      data: {
+        dashboard: {
+          currentBill: null,
+          roomInfo: {
+            roomNumber: 1,
+            floor: 1,
+            bedNumber: "111",
+            monthlyRent: 12500,
+            sharingType: "SINGLE",
+          },
+          student: { monthlyRent: 12500 },
+          announcements: [],
+          pg: { name: "Willow House", city: "Pune" },
+        },
+      },
+    } as Awaited<ReturnType<typeof api.get>>);
+
+    await render(<StudentDashboard />);
+
+    expect(await screen.findByTestId("student-code")).toHaveTextContent(
+      "A1B2C3D4E5"
+    );
+    expect(screen.getByText("Room 1 · Bed 111")).toBeTruthy();
+    expect(screen.getByText("₹12,500")).toBeTruthy();
   });
 });

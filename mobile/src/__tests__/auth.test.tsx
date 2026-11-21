@@ -1,5 +1,6 @@
 import { act, render, screen, fireEvent } from "@testing-library/react-native";
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import * as SecureStore from "expo-secure-store";
 import { LoginScreen } from "../screens/auth/login-screen";
 import { RegisterScreen } from "../screens/auth/register-screen";
 import { WelcomeScreen } from "../screens/auth/welcome-screen";
@@ -26,6 +27,7 @@ describe("Mobile Authentication Tests", () => {
       expect(screen.queryByPlaceholderText("••••••••••••")).toBeNull();
       expect(screen.getByText("Keep me logged in for 30 days")).toBeTruthy();
       expect(screen.getByText("Login to Account   →")).toBeTruthy();
+      expect(screen.queryByText("Use Fingerprint / Face ID")).toBeNull();
       expect(screen.getByText("WhatsApp OTP")).toBeTruthy();
       expect(screen.getByText("Google")).toBeTruthy();
       expect(screen.queryByText("Continue with Google")).toBeNull();
@@ -50,6 +52,34 @@ describe("Mobile Authentication Tests", () => {
     it("checks a native session without browser localStorage", async () => {
       await useAuthStore.getState().checkSession();
       expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    });
+
+    it("restores a saved session and its role from secure storage", async () => {
+      (SecureStore.getItemAsync as jest.Mock).mockResolvedValueOnce(
+        JSON.stringify({
+          state: {
+            token: "saved-token",
+            role: "LANDLORD",
+            user: {
+              id: "saved-user",
+              name: "Saved Landlord",
+              email: "landlord@example.com",
+              phone: "9876543210",
+              role: "LANDLORD",
+            },
+            pgId: "saved-pg",
+            isAuthenticated: true,
+            isLoading: false,
+          },
+          version: 0,
+        })
+      );
+
+      await useAuthStore.getState().checkSession();
+
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(useAuthStore.getState().role).toBe("LANDLORD");
+      expect(useAuthStore.getState().token).toBe("saved-token");
     });
 
     it("sends a mobile number to the login endpoint", async () => {
@@ -95,11 +125,28 @@ describe("Mobile Authentication Tests", () => {
 
       expect(screen.getByText("Student Registration")).toBeTruthy();
       expect(screen.getByPlaceholderText("Enter invitation code")).toBeTruthy();
+      expect(screen.queryByPlaceholderText("Enter total rooms")).toBeNull();
       expect(scrollView.props.keyboardShouldPersistTaps).toBe("handled");
       expect(scrollView.props.keyboardDismissMode).toBe("none");
       expect(scrollView.props.contentContainerStyle).toMatchObject({
         flexGrow: 1,
       });
+    });
+
+    it("switches between student, manager, and landlord registration forms", async () => {
+      await render(<RegisterScreen />);
+
+      fireEvent.press(screen.getByTestId("register-role-manager"));
+      expect(await screen.findByText("Manager Registration")).toBeTruthy();
+      expect(screen.getByPlaceholderText("Enter invitation code")).toBeTruthy();
+      expect(screen.queryByPlaceholderText("Enter college name")).toBeNull();
+
+      fireEvent.press(screen.getByTestId("register-role-landlord"));
+      expect(await screen.findByText("Landlord Registration")).toBeTruthy();
+      expect(screen.getByPlaceholderText("Enter PG name")).toBeTruthy();
+      expect(screen.getByPlaceholderText("Enter PG address")).toBeTruthy();
+      expect(screen.queryByPlaceholderText("Enter total rooms")).toBeNull();
+      expect(screen.queryByPlaceholderText("Enter invitation code")).toBeNull();
     });
   });
 });

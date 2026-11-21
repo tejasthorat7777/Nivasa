@@ -12,7 +12,6 @@ export const signupSchema = z
     pgName: z.string().min(2).trim().optional(),
     pgAddress: z.string().min(2).trim().optional(),
     city: z.string().min(2).trim().optional(),
-    totalRooms: z.coerce.number().int().min(1).optional(),
     pgInvitationCode: z.string().min(1).trim().optional(),
     collegeName: z.string().trim().optional(),
   })
@@ -30,19 +29,24 @@ export const signupSchema = z
         });
       }
     }
-    if (!data.totalRooms) {
-      context.addIssue({
-        code: "custom",
-        path: ["totalRooms"],
-        message: "Required when registering a landlord",
-      });
-    }
   });
 
 export const loginSchema = z.object({
   email: z.string().trim().min(1, "Email or mobile number is required"),
   password: z.string().min(1),
 });
+
+export const updateProfileSchema = z
+  .object({
+    name: z.string().trim().min(2).max(50).optional(),
+    email: emailSchema.optional(),
+    phone: z.string().trim().min(7).max(15).optional(),
+    address: z.string().trim().max(200).optional(),
+  })
+  .strict()
+  .refine((profile) => Object.keys(profile).length > 0, {
+    message: "At least one profile field must be provided",
+  });
 
 export const forgotPasswordSchema = z.object({ email: emailSchema });
 

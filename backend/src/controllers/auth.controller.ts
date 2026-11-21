@@ -1,9 +1,16 @@
 import { Request, Response } from "express";
-import { signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from "../validators/auth.validators";
+import {
+  signupSchema,
+  loginSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
+  updateProfileSchema,
+} from "../validators/auth.validators";
 import { User } from "../models/user.model";
 import jwt from "jsonwebtoken";
 import { comparePassword, hashPassword } from "../utils/password.util";
 import { generateInvitationCode } from "../utils/invitation.util";
+import { generateStudentCode } from "../utils/student-code.util";
 import { PG } from "../models/pg.model";
 
 export const signupLandlord = async (req: Request, res: Response) => {
@@ -25,7 +32,6 @@ export const signupLandlord = async (req: Request, res: Response) => {
       pgName,
       pgAddress,
       city,
-      totalRooms,
     } = result.data;
 
     // Check email uniqueness
@@ -50,7 +56,7 @@ export const signupLandlord = async (req: Request, res: Response) => {
       city,
       ownerId: req.body.landlordId || undefined, // Will be set after user creation
       invitationCode,
-      totalRooms: Number(totalRooms),
+      totalRooms: 0,
       facilities: [],
     });
 
@@ -84,6 +90,8 @@ export const signupLandlord = async (req: Request, res: Response) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
+        address: user.address ?? "",
         role: user.role,
         pgId: user.pgId,
       },
@@ -157,6 +165,8 @@ export const signupManager = async (req: Request, res: Response) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
+        address: user.address ?? "",
         role: user.role,
         pgId: user.pgId,
       },
@@ -180,7 +190,14 @@ export const signupStudent = async (req: Request, res: Response) => {
       });
     }
 
-    const { name, email, phone, password, pgInvitationCode } = result.data;
+    const {
+      name,
+      email,
+      phone,
+      password,
+      pgInvitationCode,
+      collegeName,
+    } = result.data;
 
     // Check email uniqueness
     const existingUser = await User.findOne({ email });
@@ -211,6 +228,8 @@ export const signupStudent = async (req: Request, res: Response) => {
       passwordHash,
       role: "STUDENT",
       pgId: pg._id,
+      collegeName,
+      studentCode: generateStudentCode(),
       isActive: true,
       approvalStatus: "PENDING",
     });
@@ -230,6 +249,10 @@ export const signupStudent = async (req: Request, res: Response) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
+        address: user.address ?? "",
+        collegeName: user.collegeName,
+        studentCode: user.studentCode,
         role: user.role,
         pgId: user.pgId,
         approvalStatus: user.approvalStatus,
@@ -283,6 +306,11 @@ export const loginUser = async (req: Request, res: Response) => {
       });
     }
 
+    if (user.role === "STUDENT" && !user.studentCode) {
+      user.studentCode = generateStudentCode();
+      await user.save();
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id },
@@ -298,6 +326,10 @@ export const loginUser = async (req: Request, res: Response) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
+        address: user.address ?? "",
+        collegeName: user.collegeName,
+        studentCode: user.studentCode,
         role: user.role,
         pgId: user.pgId,
         approvalStatus: user.approvalStatus,
@@ -441,11 +473,100 @@ export const getMe = async (req: Request, res: Response) => {
         message: "User not found",
       });
     }
+    if (user.role === "STUDENT" && !user.studentCode) {
+      const studentCode = generateStudentCode();
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: user._id, studentCode: { $exists: false } },
+        { studentCode },
+        { new: true }
+      ).select("-passwordHash");
+      if (updatedUser) {
+        return res.status(200).json({
+          success: true,
+          user: updatedUser,
+        });
+      }
+      const refreshedUser = await User.findById(user._id).select("-passwordHash");
+      if (!refreshedUser?.studentCode) {
+        throw new Error("Unable to create a student account code.");
+      }
+      return res.status(200).json({
+        success: true,
+        user: refreshedUser,
+      });
+    }
     return res.status(200).json({
       success: true,
       user,
     });
   } catch (error: any) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const result = updateProfileSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation error",
+        errors: result.error.format(),
+      });
+    }
+
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const conflicts = [];
+    if (result.data.email) conflicts.push({ email: result.data.email });
+    if (result.data.phone) conflicts.push({ phone: result.data.phone });
+
+    if (conflicts.length > 0) {
+      const existingUser = await User.findOne({
+        _id: { $ne: userId },
+        $or: conflicts,
+      });
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message: "Email or phone number is already in use",
+        });
+      }
+    }
+
+    const user = await User.findByIdAndUpdate(userId, result.data, {
+      new: true,
+      runValidators: true,
+    }).select("-passwordHash");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user,
+    });
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Email or phone number is already in use",
+      });
+    }
     return res.status(500).json({
       success: false,
       message: error.message,

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { BrandLogo } from "./BrandLogo";
 import { COLORS } from "../../theme";
 
@@ -8,6 +8,7 @@ interface AppHeaderProps {
   role: string;
   propertyName?: string;
   location?: string;
+  onProfilePress?: () => void;
 }
 
 export const AppHeader = ({
@@ -15,6 +16,7 @@ export const AppHeader = ({
   role,
   propertyName = "Nivasa",
   location,
+  onProfilePress,
 }: AppHeaderProps) => {
   const initials = name
     ?.split(/\s+/)
@@ -36,9 +38,16 @@ export const AppHeader = ({
           </Text>
         </View>
       </View>
-      <View style={styles.avatar}>
+      <Pressable
+        accessibilityLabel="Open profile and settings"
+        accessibilityRole="button"
+        disabled={!onProfilePress}
+        onPress={onProfilePress}
+        style={styles.avatar}
+        testID="app-header-profile-button"
+      >
         <Text style={styles.avatarText}>{initials || "N"}</Text>
-      </View>
+      </Pressable>
     </View>
   );
 };
